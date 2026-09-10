@@ -1,5 +1,6 @@
 %{
 #include <iostream>
+#include "token.h"
 using std::cout; 
 %}
 
@@ -10,25 +11,25 @@ using std::cout;
 delim               [ \t\n]
 ws                  {delim}+
 digit               [0-9]
-/* number              {digit}+(\.{digit}+)?(E[+-]?{digit}+)? */
+number              {digit}+(\.{digit}+)?(E[+-]?{digit}+)?
 letter              [A-Za-z]
 instanceName        ({letter})+({digit})+
 newType             ({letter})+("DataType")
 className           [A-Z]({letter}|_)*
 relationName        [a-z]({letter}|_)*
-symbol             ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|\*|\@|\:)
+symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|\*|\@|\:)
 
 %%
 {ws}      {/* nenhuma ação e nenhum retorno */}
-genset                  cout << "GENSET\n";
-disjoint                cout << "DISJOINT\n";
-complete                cout << "COMPLETE\n";
-general                 cout << "GENERAL\n";
-specifics               cout << "SPECIFICS\n";
-where                   cout << "WHERE\n";
-package                 cout << "PACKAGE\n";
-import                  cout << "IMPORT\n";
-functional-complexes    cout << "FUNCTIONAL_COMPLEXES\n";
+genset                  return GENSET;
+disjoint                return DISJOINT;
+complete                return COMPLETE;
+general                 return GENERAL;
+specifics               return SPECIFICS;
+where                   return WHERE;
+package                 return PACKAGE;
+import                  return IMPORT;
+functional-complexes    return FUNCTIONAL_COMPLEXES;
 
 number                  cout << "NUMBER\n";
 string                  cout << "STRING\n";
@@ -98,9 +99,3 @@ constitution            cout << "CONSTITUTION\n";
 
 .|\n                    cout << "Desconhecido na linha: " << lineno() << "\n";
 %%
-
-int main()
-{
-	yyFlexLexer lexer;
-	lexer.yylex();
-}
