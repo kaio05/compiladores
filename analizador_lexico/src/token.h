@@ -1,11 +1,12 @@
 #pragma once
+using uint = unsigned int;
 
-enum Tokens {
+enum tokens {
     GENSET=1, DISJOINT, COMPLETE, GENERAL, SPECIFICS, WHERE, PACKAGE, IMPORT, FUNCTIONAL_COMPLEXES
 };
 
 struct Token {
     uint token;
-    int line;
-    int column;
+    int linha;
+    int coluna;
 };

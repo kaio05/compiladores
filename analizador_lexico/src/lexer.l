@@ -97,5 +97,5 @@ constitution            cout << "CONSTITUTION\n";
 
 {symbol}                cout << "SYMBOL\n";
 
-.|\n                    cout << "Desconhecido na linha: " << lineno() << "\n";
+.                       cout << "Desconhecido na linha: " << yylineno << "\n";
 %%

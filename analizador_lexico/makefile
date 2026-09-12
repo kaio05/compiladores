@@ -6,11 +6,11 @@ LEX=flex++
 # Dependências
 all: lexer
 
-lexer: lex.yy.cc token.h main.cpp
-	$(CC) lex.yy.cc main.cpp -std=c++23 -o lexer 
+lexer: src/lex.yy.cc src/token.h src/main.cpp
+	$(CC) src/lex.yy.cc src/main.cpp -std=c++23 -o lexer 
 
-lex.yy.cc: lexer.l token.h
-	$(LEX) lexer.l 
+src/lex.yy.cc: src/lexer.l src/token.h
+	$(LEX) -o src/lex.yy.cc src/lexer.l 
 
 clean:
-	rm lexer lex.yy.cc
+	rm lexer src/lex.yy.cc

@@ -1,4 +1,4 @@
 exemplos
 teste
-analizador_lexico/lex.yy.cc
+analizador_lexico/src/lex.yy.cc
 analizador_lexico/lexer
