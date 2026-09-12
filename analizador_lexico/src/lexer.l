@@ -1,26 +1,22 @@
 %{
-#include <iostream>
 #include "token.h"
-using std::cout; 
 
 int column = 1;
 int yycolumn = 1;
 
-int atualizaPosicaoColuna(int leng, const char* text) {
+void updateColumnPos(int leng, const char* text) {
     yycolumn = column;
     column += leng;
 
-    // Isso só está aqui para não quebrar o delim.
+    // Reseta a coluna. (Isso só está aqui para não quebrar o delim).
     for (const char* t = text; *t; t++) {
         if (*t == '\n') { 
             column = 1;
         }
     }
-
-    return yycolumn;
 }
 
-#define YY_USER_ACTION atualizaPosicaoColuna(yyleng, yytext);
+#define YY_USER_ACTION updateColumnPos(yyleng, yytext);
 
 %}
 
@@ -52,71 +48,71 @@ package                 return PACKAGE;
 import                  return IMPORT;
 functional-complexes    return FUNCTIONAL_COMPLEXES;
 
-number                  cout << "NUMBER\n";
-string                  cout << "STRING\n";
-boolean                 cout << "BOOLEAN\n";
-date                    cout << "DATE\n";
-time                    cout << "TIME\n";
-datetime                cout << "DATETIME\n";
+number                  return NUMBER;
+string                  return STRING;
+boolean                 return BOOLEAN;
+date                    return DATE;
+time                    return TIME;
+datetime                return DATETIME;
 
-ordered                 cout << "ORDERED\n";
-const                   cout << "CONST\n";
-derived                 cout << "DERIVED\n";
-subsets                 cout << "SUBSETS\n";
-redefines               cout << "REDEFINES\n";
+ordered                 return ORDERED;
+const                   return CONST;
+derived                 return DERIVED;
+subsets                 return SUBSETS;
+redefines               return REDEFINES;
 
-event                   cout << "EVENT\n";
-situation               cout << "SITUATION\n";
-process                 cout << "PROCESS\n";
-category                cout << "CATEGORY\n";
-mixin                   cout << "MIXIN\n";
-phaseMixin              cout << "PHASE_MIXIN\n";
-roleMixin               cout << "ROLE_MIXIN\n";
-historicalRole          cout << "HISTORICAL_ROLE\n";
-historicalRoleMixin     cout << "HISTORICAL_ROLE_MIXIN\n";
-kind                    cout << "KIND\n";
-collective              cout << "COLLECTIVE\n";
-quantity                cout << "QUANTITY\n";
-quality                 cout << "QUALITY\n";
-mode                    cout << "MODE\n";
-intrinsicMode           cout << "INTRINSIC_MODE\n";
-extrinsicMode           cout << "EXTRINSIC_MODE\n";
-subkind                 cout << "SUBKIND\n";
-phase                   cout << "PHASE\n";
-role                    cout << "ROLE\n";
+event                   return EVENT;
+situation               return SITUATION;
+process                 return PROCESS;
+category                return CATEGORY;
+mixin                   return MIXIN;
+phaseMixin              return PHASE_MIXIN;
+roleMixin               return ROLE_MIXIN;
+historicalRole          return HISTORICAL_ROLE;
+historicalRoleMixin     return HISTORICAL_ROLE_MIXIN;
+kind                    return KIND;
+collective              return COLLECTIVE;
+quantity                return QUANTITY;
+quality                 return QUALITY;
+mode                    return MODE;
+intrinsicMode           return INTRINSIC_MODE;
+extrinsicMode           return EXTRINSIC_MODE;
+subkind                 return SUBKIND;
+phase                   return PHASE;
+role                    return ROLE;
 
-material                cout << "MATERIAL\n";
-derivation              cout << "DERIVATION\n";
-comparative             cout << "COMPARATIVE\n";
-mediation               cout << "MEDIATION\n";
-characterizarion        cout << "CHARACTERIZATION\n";
-externalDependence      cout << "EXTERNAL_DEPENDENCE\n";
-componentOf             cout << "COMPONENT_OF\n";
-memberOf                cout << "MEMBER_OF\n";
-subCollectionOf         cout << "SUB_COLLECTION_OF\n";
-subQualityOf            cout << "SUB_QUALITY_OF\n";
-instantiation           cout << "INSTANTIATION\n";
-termination             cout << "TERMINATION\n";
-participation           cout << "PARTICIPATION\n";
-participational         cout << "PARTICIPATIONAL\n";
-historicalDependence    cout << "HISTORICAL_DEPENDENCE\n";
-creation                cout << "CREATION\n";
-manifestation           cout << "MANIFESTATION\n";
-bringsAbout             cout << "BRINGS_ABOUT\n";
-triggers                cout << "TRIGGERS\n";
-composition             cout << "COMPOSITION\n";
-aggregation             cout << "AGGREGATION\n";
-inherence               cout << "INHERENCE\n";
-value                   cout << "VALUE\n";
-formal                  cout << "FORMAL\n";
-constitution            cout << "CONSTITUTION\n";
+material                return MATERIAL;
+derivation              return DERIVATION;
+comparative             return COMPARATIVE;
+mediation               return MEDIATION;
+characterizarion        return CHARACTERIZATION;
+externalDependence      return EXTERNAL_DEPENDENCE;
+componentOf             return COMPONENT_OF;
+memberOf                return MEMBER_OF;
+subCollectionOf         return SUB_COLLECTION_OF;
+subQualityOf            return SUB_QUALITY_OF;
+instantiation           return INSTANTIATION;
+termination             return TERMINATION;
+participation           return PARTICIPATION;
+participational         return PARTICIPATIONAL;
+historicalDependence    return HISTORICAL_DEPENDENCE;
+creation                return CREATION;
+manifestation           return MANIFESTATION;
+bringsAbout             return BRINGS_ABOUT;
+triggers                return TRIGGERS;
+composition             return COMPOSITION;
+aggregation             return AGGREGATION;
+inherence               return INHERENCE;
+value                   return VALUE;
+formal                  return FORMAL;
+constitution            return CONSTITUTION;
 
-{number}                cout << "NUMERO\n";
-{symbol}                cout << "SYMBOL\n";
-{instanceName}          cout << "INSTANCE_NAME\n";
-{newType}               cout << "NEW_TYPE\n";
-{className}             cout << "CLASS_NAME\n";
-{relationName}          cout << "RELATION_NAME\n";
+{number}                return NUMBER_LITERAL;
+{symbol}                return ESPECIAL_SYMBOL;
+{instanceName}          return INSTANCE_NAME;
+{newType}               return NEW_TYPE;
+{className}             return CLASS_NAME;
+{relationName}          return RELATION_NAME;
 
-.                       cout << "Desconhecido na linha: " << yylineno << "\n";
+.                       return -1;
 %%
