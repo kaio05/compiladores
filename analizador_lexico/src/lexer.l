@@ -2,6 +2,26 @@
 #include <iostream>
 #include "token.h"
 using std::cout; 
+
+int column = 1;
+int yycolumn = 1;
+
+int atualizaPosicaoColuna(int leng, const char* text) {
+    yycolumn = column;
+    column += leng;
+
+    // Isso só está aqui para não quebrar o delim.
+    for (const char* t = text; *t; t++) {
+        if (*t == '\n') { 
+            column = 1;
+        }
+    }
+
+    return yycolumn;
+}
+
+#define YY_USER_ACTION atualizaPosicaoColuna(yyleng, yytext);
+
 %}
 
 %option noyywrap
@@ -20,7 +40,8 @@ relationName        [a-z]({letter}|_)*
 symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|\*|\@|\:)
 
 %%
-{ws}      {/* nenhuma ação e nenhum retorno */}
+{ws}                    {/* nenhuma ação e nenhum retorno */}
+
 genset                  return GENSET;
 disjoint                return DISJOINT;
 complete                return COMPLETE;
@@ -90,12 +111,12 @@ value                   cout << "VALUE\n";
 formal                  cout << "FORMAL\n";
 constitution            cout << "CONSTITUTION\n";
 
+{number}                cout << "NUMERO\n";
+{symbol}                cout << "SYMBOL\n";
 {instanceName}          cout << "INSTANCE_NAME\n";
 {newType}               cout << "NEW_TYPE\n";
 {className}             cout << "CLASS_NAME\n";
 {relationName}          cout << "RELATION_NAME\n";
-
-{symbol}                cout << "SYMBOL\n";
 
 .                       cout << "Desconhecido na linha: " << yylineno << "\n";
 %%
