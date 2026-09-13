@@ -4,19 +4,16 @@
 int column = 1;
 int yycolumn = 1;
 
-void updateColumnPos(int leng, const char* text) {
+void updateColumnPos(int leng) {
     yycolumn = column;
     column += leng;
-
-    // Reseta a coluna. (Isso só está aqui para não quebrar o delim).
-    for (const char* t = text; *t; t++) {
-        if (*t == '\n') { 
-            column = 1;
-        }
-    }
 }
 
-#define YY_USER_ACTION updateColumnPos(yyleng, yytext);
+void resetColumn() {
+    column = 1;
+}
+
+#define YY_USER_ACTION updateColumnPos(yyleng);
 
 %}
 
@@ -24,8 +21,10 @@ void updateColumnPos(int leng, const char* text) {
 %option yylineno
 
 /* definições regulares */
-delim               [ \t\n]
+delim               [ \t]
 ws                  {delim}+
+newline             [\n]
+comment             (\/\/.*)
 digit               [0-9]
 number              {digit}+(\.{digit}+)?(E[+-]?{digit}+)?
 letter              [A-Za-z]
@@ -37,6 +36,8 @@ symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|\*|\@|\:)
 
 %%
 {ws}                    {/* nenhuma ação e nenhum retorno */}
+{newline}               resetColumn();
+{comment}               resetColumn();
 
 genset                  return GENSET;
 disjoint                return DISJOINT;
