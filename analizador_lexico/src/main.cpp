@@ -31,10 +31,14 @@ int main(int argc, char** argv)
 
 	lexer.switch_streams(&file, &std::cout);
 
+	cout << "===============\n"
+		 << "Visão analítica\n"
+		 << "===============\n";
+
 	while ((lookahead = lexer.yylex()) > 0) {
 		token t = { (uint)lookahead, lexer.YYText(), lexer.lineno(), yycolumn };
 		tokenCountMap[t.type]++;
-		cout << TokenTypeNames[t.type] << " " << t.lexeme << " " << t.line << " " << t.column << std::endl;
+		cout << "<Token: " << TokenTypeNames[t.type] << ", \"" << t.lexeme << "\", lin: " << t.line << ", col:" << t.column << ">\n";
 	}
 
 	if (lookahead == -1) {
