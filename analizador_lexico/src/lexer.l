@@ -115,5 +115,6 @@ constitution            return CONSTITUTION;
 {className}             return CLASS_NAME;
 {relationName}          return RELATION_NAME;
 
-.                       return -1;
+.                       return UNKNOWN;
+
 %%
