@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "token.h"
+#include "TokenTypeNames.h"
 using std::cout;
 
 extern int yycolumn;
@@ -29,7 +30,7 @@ int main(int argc, char** argv)
 
 	while ((lookahead = lexer.yylex()) > 0) {
 		token t = { (uint)lookahead, lexer.YYText(), lexer.lineno(), yycolumn };
-		cout << t.type << " " << t.lexeme << " " << t.line << " " << t.column << std::endl;
+		cout << TokenTypeNames[t.type] << " " << t.lexeme << " " << t.line << " " << t.column << std::endl;
 	}
 
 	if (lookahead == -1) {
