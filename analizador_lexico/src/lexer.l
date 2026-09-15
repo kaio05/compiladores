@@ -21,7 +21,7 @@ void resetColumn() {
 %option yylineno
 
 /* definições regulares */
-delim               [ \t]
+delim               [ \t\r]
 ws                  {delim}+
 newline             [\n]
 comment             (\/\/.*)
@@ -32,7 +32,7 @@ instanceName        ({letter})+({digit})+
 newType             ({letter})+("DataType")
 className           [A-Z]({letter}|_)*
 relationName        [a-z]({letter}|_)*
-symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|\*|\@|\:)
+symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",")
 
 %%
 {ws}                    {/* nenhuma ação e nenhum retorno */}
@@ -76,8 +76,8 @@ collective              return COLLECTIVE;
 quantity                return QUANTITY;
 quality                 return QUALITY;
 mode                    return MODE;
-intrinsicMode           return INTRINSIC_MODE;
-extrinsicMode           return EXTRINSIC_MODE;
+intrinsic-modes         return INTRINSIC_MODES;
+extrinsic-modes         return EXTRINSIC_MODES;
 subkind                 return SUBKIND;
 phase                   return PHASE;
 role                    return ROLE;
@@ -109,7 +109,7 @@ formal                  return FORMAL;
 constitution            return CONSTITUTION;
 
 {number}                return NUMBER_LITERAL;
-{symbol}                return ESPECIAL_SYMBOL;
+{symbol}                return SPECIAL_SYMBOL;
 {instanceName}          return INSTANCE_NAME;
 {newType}               return NEW_TYPE;
 {className}             return CLASS_NAME;

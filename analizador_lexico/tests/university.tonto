@@ -1,0 +1,14 @@
+kind University specializes Organization {
+    address: Address
+    @componentOf
+    [1] <o>-- [2..*] Department
+}
+kind Department {
+    [1]-- constitutedBy-- [1] Staff
+}
+collective Staff {
+    @memberOf
+    [1..*] <>-- [2..*] Employee (members)
+    @subCollectionOf
+    [1] <o>-- [1] SeniorStaff
+}

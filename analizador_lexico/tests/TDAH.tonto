@@ -96,8 +96,6 @@ kind Criterion_A
 
 kind ADHD specializes Neurologically_Based_Condition 
 
-// COMENTARIO
-
 disjoint complete genset TypesOfMedicine {
     general Medicine
     specifics Dextroamphetamine_, Methylphenidate_

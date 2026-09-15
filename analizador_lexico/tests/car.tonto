@@ -4,6 +4,8 @@ kind Organization
 subkind CarAgency specializes Organization
 kind Car
 
+planet01
+
 relator CarOwnership {
     @mediation
     -- involvesOwner -- [1] CarAgency
