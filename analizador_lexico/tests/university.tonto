@@ -3,9 +3,17 @@ kind University specializes Organization {
     @componentOf
     [1] <o>-- [2..*] Department
 }
+
+
+// Comentário
 kind Department {
     [1]-- constitutedBy-- [1] Staff
 }
+
+// Erro proposital
+??? ?? ?? ??????
+~~~ #erro;
+
 collective Staff {
     @memberOf
     [1..*] <>-- [2..*] Employee (members)

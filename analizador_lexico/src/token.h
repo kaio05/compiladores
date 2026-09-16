@@ -33,7 +33,7 @@ enum tokenTypes {
 };
 
 const string tokenTypeNames[] = {
-    "EOF"
+    "EOF",
 
     "GENSET", "DISJOINT", "COMPLETE", "GENERAL", "SPECIFICS", "WHERE", "PACKAGE", "IMPORT", "FUNCTIONAL_COMPLEXES", 
 
@@ -79,7 +79,7 @@ enum tokenClass {
     UNKNOWNSYMBOL
 };
 
-const map<uint, string> tokenClassNames = {
+const map<tokenClass, string> tokenClassNames = {
     { RESERVED_WORDS, "Palavra reservada" },
     { PRIMITIVE_TYPE, "Tipo primitivo" },
     { META_ATTRIBUTE, "Meta atributo" },
@@ -92,4 +92,15 @@ const map<uint, string> tokenClassNames = {
     { CLASS, "Classe" },
     { RELATION, "Relação" },
     { UNKNOWNSYMBOL, "Símbolo desconhecido" }
+};
+
+struct token {
+    uint type;
+    uint classification;
+    string lexeme;
+    uint line;
+    uint column;
+
+    token(uint type, uint classification, string lexeme, uint line, uint column) 
+    : type(type), classification(classification), lexeme(lexeme), line(line), column(column){};
 };
