@@ -1,16 +1,16 @@
 # Analisador Léxico para a Linguagem TONTO
 
-## 🧩 Fase 1 — Análise Léxica (Lexer)
+## Fase 1 — Análise Léxica
 
 Projeto da disciplina de Compiladores (UFERSA) para a criação de um analisador léxico em C++ e Flex para a "Textual Ontology Language" (TONTO).
 
-## 📖 Sobre o Projeto
+## Sobre o Projeto
 
 **TONTO** (Textual Ontology Language) é uma linguagem textual para a especificação de ontologias computacionais. Este projeto implementa a primeira fase de um compilador para a linguagem, o **analisador léxico**, responsável por ler o código-fonte `.tonto` e convertê-lo em uma sequência de tokens (as menores unidades lógicas da linguagem).
 
 O analisador foi construído em C++ utilizando a ferramenta [Flex (Fast Lexical Analyzer Generator)](https://github.com/westes/flex).
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 *   **Reconhecimento Completo**: Identifica todos os estereótipos (de classe e relação), palavras-chave, meta-atributos e símbolos especiais da linguagem TONTO.
 *   **Identificadores Complexos**: Classifica corretamente os diferentes tipos de identificadores através de expressões regulares:
@@ -23,17 +23,17 @@ O analisador foi construído em C++ utilizando a ferramenta [Flex (Fast Lexical 
     *   **Tabela de Síntese**: Um resumo quantitativo com a contagem total de cada categoria de token (ex: Palavra reservada, Classe, Relação) ao final da análise.
 *   **Relatório de Erros**: Captura caracteres ilegais e informa a linha e coluna onde o erro léxico (marcado como `UNKNOWN`) ocorreu.
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 *   C++20 (compilador g++)
 *   Flex (Fast Lexical Analyzer)
 *   GNU Make
 
-## 📁 Estrutura de Pastas
+## Estrutura de Pastas
 
 A estrutura do projeto está organizada da seguinte forma:
 
-    seu-projeto/
+    compiladores/
     ├── analizador_lexico/
     │   ├── makefile             (Script de automação de compilação)
     │   ├── src/
@@ -47,7 +47,7 @@ A estrutura do projeto está organizada da seguinte forma:
     │       └── university.tonto
     └── README.md                (Este arquivo)
 
-## 🚀 Como Compilar e Rodar
+## Como Compilar e Rodar
 
 ### 1. Dependências Necessárias
 *   **Linux**: `sudo apt install g++ flex make`
@@ -61,3 +61,47 @@ Abra o terminal, navegue até a pasta `analizador_lexico/` e execute o utilitár
 ```bash
 cd analizador_lexico
 make
+```
+
+Isso executará o Flex para gerar o arquivo C++ do analisador e compilará o programa usando o g++.
+
+### 3. Execução
+Execute o programa passando o caminho de um arquivo `.tonto` como argumento:
+
+**No Linux:**
+```bash
+./lexer tests/TDAH.tonto
+```
+
+**No Windows:**
+```bash
+.\lexer.exe tests\TDAH.tonto
+```
+
+## Exemplo de Saída
+
+Ao analisar um arquivo, a saída no terminal seguirá exatamente este formato:
+
+```text
+===============
+Visão analítica
+===============
+<Token: "package", 2, PACKAGE, col:1 lin:>
+<Token: "CarOwnership", 2, CLASS_NAME, col:9 lin:>
+<Token: "kind", 4, KIND, col:1 lin:>
+<Token: "Organization", 4, CLASS_NAME, col:6 lin:>
+<Token: "subkind", 5, SUBKIND, col:1 lin:>
+...
+<Token: "]", 11, SPECIAL_SYMBOL, col:38 lin:>
+<Token: "Car", 11, CLASS_NAME, col:40 lin:>
+Fim do arquivo.
+=================
+Tabela de síntese
+=================
+Classe: 6
+Estereótipos de classe: 3
+Estereótipos de relação: 2
+Instância: 1
+Palavra reservada: 1
+Símbolo especial: 8
+```
