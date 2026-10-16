@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 uint classifyTokens(uint type)
 {
     if (type >= tokenClass::RESERVED_WORDS && type < tokenClass::PRIMITIVE_TYPE) {
-        return tokenClass::RESERVED_WORDS;
+        return tokenClass::RESERVED_WORDS; 
    } 
     else if (type >= tokenClass::PRIMITIVE_TYPE && type < tokenClass::META_ATTRIBUTE) {
         return tokenClass::PRIMITIVE_TYPE;

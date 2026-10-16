@@ -80,18 +80,18 @@ enum tokenClass {
 };
 
 const map<tokenClass, string> tokenClassNames = {
-    { RESERVED_WORDS, "Palavra reservada" },
-    { PRIMITIVE_TYPE, "Tipo primitivo" },
-    { META_ATTRIBUTE, "Meta atributo" },
+    { RESERVED_WORDS, "Palavras reservadas" },
+    { PRIMITIVE_TYPE, "Tipos primitivos" },
+    { META_ATTRIBUTE, "Meta-atributos" },
     { CLASS_STEREOTYPES, "Estereótipos de classe" },
     { RELATION_STEREOTYPES, "Estereótipos de relação" },
-    { NUMBERL, "Número" },
-    { SPECIALSYMBOL, "Símbolo especial" },
-    { NEWTYPE, "Novo tipo" },
-    { INSTANCE, "Instância" },
-    { CLASS, "Classe" },
-    { RELATION, "Relação" },
-    { UNKNOWNSYMBOL, "Símbolo desconhecido" }
+    { NUMBERL, "Números" },
+    { SPECIALSYMBOL, "Símbolos especiais" },
+    { NEWTYPE, "Novos tipos" },
+    { INSTANCE, "Instâncias" },
+    { CLASS, "Classes" },
+    { RELATION, "Relações" },
+    { UNKNOWNSYMBOL, "Símbolos desconhecidos" }
 };
 
 struct token {
