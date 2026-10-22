@@ -82,6 +82,7 @@ extrinsic-modes         return EXTRINSIC_MODES;
 subkind                 return SUBKIND;
 phase                   return PHASE;
 role                    return ROLE;
+relator                    return RELATOR;
 
 material                return MATERIAL;
 derivation              return DERIVATION;

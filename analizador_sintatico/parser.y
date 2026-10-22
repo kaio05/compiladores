@@ -20,7 +20,7 @@ void yyerror(const char*);
 %token ROLE_MIXIN HISTORICAL_MIXIN HISTORICAL_ROLE
 %token HISTORICAL_ROLE_MIXIN KIND COLLECTIVE QUANTITY
 %token QUALITY MODE INTRINSIC_MODES EXTRINSIC_MODES
-%token SUBKIND PHASE ROLE
+%token SUBKIND PHASE ROLE RELATOR
 
 %token MATERIAL DERIVATION COMPARATIVE MEDIATION
 %token CHARACTERIZATION EXTERNAL_DEPENDENCE COMPONENT_OF
@@ -45,22 +45,33 @@ void yyerror(const char*);
 /* 1. Programa completo */
 
 program:
-    package_decl declarations
+  imports package_decl declarations
+;
+
+imports:
+  IMPORT package_name
+  | IMPORT package_name'.'NEW_TYPE
 ;
 
 package_decl:
-    PACKAGE CLASS_NAME {cout << "Declaração de pacote\n";}
+  PACKAGE package_name {cout << "Declaração de pacote\n";}
+;
+
+package_name:
+  CLASS_NAME
+  | RELATION_NAME
+  | ATTR_NAME
 ;
 
 /* Declarações posteriores ao pacote. */
 
 declarations:
-    %empty
+  %empty
   | declarations declaration
 ;
 
 declaration:
-    class_decl {cout << "Declaração de classe\n";}
+  class_decl {cout << "Declaração de classe\n";}
   | data_type_decl {cout << "Declaração de tipo de dados\n";}
   | enum_decl {cout << "Declaração de enum\n";}
   | generalization_decl {cout << "Declaração de generalização\n";}
@@ -80,8 +91,12 @@ opt_class_body:
 
 opt_specializes:
     %empty
-    | SPECIALIZES CLASS_NAME
+    | SPECIALIZES class_list
 ;
+
+class_list:
+  CLASS_NAME
+  | CLASS_NAME ',' class_list
 
 class_stereotype:
     EVENT
@@ -104,6 +119,7 @@ class_stereotype:
   | SUBKIND
   | PHASE
   | ROLE
+  | RELATOR
 ;
 
 /* 3. Declaração de tipos de dados */
@@ -196,21 +212,27 @@ specific_classes:
 
 internal_rels:
     %empty
-  | internal_rels internal_rel
+  | internal_rels relation
 ;
 
-internal_rel:
+relation:
     '@' relation_type
-    CARDINALITY
+    cardinality_opt
     relation_operator
-    CARDINALITY
+    cardinality_opt
     CLASS_NAME
   | '@' relation_type
-    CARDINALITY
+    cardinality_opt
     DASH
-    CARDINALITY
+    RELATION_NAME
     DASH
+    cardinality_opt
     CLASS_NAME
+;
+
+cardinality_opt:
+  %empty
+  | CARDINALITY
 ;
 
 relation_type:
@@ -218,6 +240,7 @@ relation_type:
   | MEMBER_OF
   | SUB_COLLECTION_OF
   | SUB_QUALITY_OF
+  | MEDIATION
 ;
 
 /* Relações externas */
