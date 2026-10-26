@@ -6,7 +6,7 @@ FLEX=flex
 BISON=bison
 
 parser: lex.yy.c parser.tab.c
-	$(CPP) lex.yy.c parser.tab.c -std=c++17 -o parser
+	$(CPP) lex.yy.c parser.tab.c -std=c++20 -o parser
 
 lex.yy.c: lexer.l
 	$(FLEX) lexer.l
