@@ -14,7 +14,7 @@ void yyerror(const char*);
 
 %token NUMBER STRING BOOLEAN DATE TIME DATETIME
 
-%token ORDERED CONST DERIVED SUBSETS REDEFINES
+%token ORDERED CONST DERIVED SPECIALIZES SUBSETS REDEFINES
 
 %token EVENT SITUATION PROCESS CATEGORY MIXIN PHASE_MIXIN
 %token ROLE_MIXIN HISTORICAL_MIXIN HISTORICAL_ROLE
@@ -36,7 +36,7 @@ void yyerror(const char*);
 /* Tokens adicionais para elementos compostos. */
 %token RELATION_KW CARDINALITY DASH AGGREGATION_OP COMPOSITION_OP
 
-%token ENUM SPECIALIZES ATTR_NAME
+%token ENUM ATTR_NAME
 
 %start program
 
@@ -269,26 +269,6 @@ relation_operator:
 
 /* definido pelo analisador léxico */
 extern FILE * yyin;  
-
-int main(int argc, char ** argv)
-{
-	/* se foi passado um nome de arquivo */
-	if (argc > 1)
-	{
-		FILE * file;
-		file = fopen(argv[1], "r");
-		if (!file)
-		{
-			cout << "Arquivo " << argv[1] << " não encontrado!\n";
-			exit(1);
-		}
-		
-		/* entrada ajustada para ler do arquivo */
-		yyin = file;
-	}
-
-	yyparse();
-}
 
 void yyerror(const char* s)
 {
