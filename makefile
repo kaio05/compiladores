@@ -1,36 +1,40 @@
 
-# Compilers
+# Compiladores
 CPP = g++
-FLEX = flex
+FLEX = flex++
 BISON = bison
 
-# Compiler flags
-CXXFLAGS = -std=c++20 -Wall -Wextra
+# flags
+CPPFLAGS = -std=c++20
+
+# Saida da compilação
 TARGET = compiler
 
-# Default target
 all: $(TARGET)
 
-# Generate the executable
-$(TARGET): main.cpp analizador_lexico/lex.yy.c analizador_sintatico/parser.tab.c
-	$(CPP) $(CXXFLAGS) -Ianalizador_lexico -Ianalizador_sintatico \
+# Gera o excutavel
+$(TARGET): main.cpp analizador_lexico/lex.yy.cc analizador_sintatico/parser.tab.c
+	$(CPP) $(CPPFLAGS) -Ianalizador_lexico -Ianalizador_sintatico \
 		main.cpp \
-		analizador_lexico/lex.yy.c \
+		analizador_lexico/lex.yy.cc \
 		analizador_sintatico/parser.tab.c \
 		-o $(TARGET)
 
-# Generate the Flex lexical analyzer
-analizador_lexico/lex.yy.c: analizador_lexico/lexer.l analizador_lexico/AnalizadorLexico.h
-	$(FLEX) -o $@ $<
 
-# Generate the Bison parser and header
+#Gera o analizador lexico
+analizador_lexico/lex.yy.cc: analizador_lexico/lexer.l analizador_lexico/AnalizadorLexico.h analizador_sintatico/parser.tab.h
+	$(FLEX) -o analizador_lexico/lex.yy.cc analizador_lexico/lexer.l
+
+
+# Gera o analizador sintatico
 analizador_sintatico/parser.tab.c analizador_sintatico/parser.tab.h &: analizador_sintatico/parser.y
 	$(BISON) -d -o analizador_sintatico/parser.tab.c analizador_sintatico/parser.y
 
-# Remove generated files and executable
+
+# clean
 clean:
 	rm -f $(TARGET) \
-		analizador_lexico/lex.yy.c \
+		analizador_lexico/lex.yy.cc \
 		analizador_sintatico/parser.tab.c \
 		analizador_sintatico/parser.tab.h
 

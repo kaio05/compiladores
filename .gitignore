@@ -2,9 +2,9 @@ exemplos
 teste
 
 analizador_lexico/lex.yy.cc
+analizador_lexico/lex.yy.c
 analizador_lexico/lexer
 
-analizador_sintatico/lex.yy.c
 analizador_sintatico/parser.tab.h
 analizador_sintatico/parser.tab.c
 analizador_sintatico/parser

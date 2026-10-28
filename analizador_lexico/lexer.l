@@ -1,20 +1,20 @@
 %{
-#include "parser.tab.h"
+#include "../analizador_sintatico/parser.tab.h"
 
-int column = 1;
-int yycolumn = 1;
+int yycolumnStart = 1;
+int yycolumnEnd = 1;
 
 void updateColumnPos(int leng) {
-    yycolumn = column;
-    column += leng;
+    yycolumnStart = column;
+    yycolumnEnd += leng;
 }
 
 void resetColumn() {
-    column = 1;
+    yycolumnEnd = 1;
+    yycolumnStart = 1;
 }
 
 #define YY_USER_ACTION updateColumnPos(yyleng);
-
 %}
 
 %option noyywrap
@@ -82,7 +82,7 @@ extrinsic-modes         return EXTRINSIC_MODES;
 subkind                 return SUBKIND;
 phase                   return PHASE;
 role                    return ROLE;
-relator                    return RELATOR;
+relator                 return RELATOR;
 
 material                return MATERIAL;
 derivation              return DERIVATION;

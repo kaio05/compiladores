@@ -3,13 +3,16 @@
 #include <fstream>
 #include <unordered_map>
 #include <vector>
-#include "analizador_lexico/AnalizadorLexico.h"
 #include "analizador_sintatico/parser.tab.h"
+#include "analizador_lexico/AnalizadorLexico.h"
 using namespace std;
 
-extern int yycolumn;
+extern int yycolumnStart;
 
-uint classifyTokens(uint type);
+void lex(ifstream& file);
+void parse();
+uint classifyTokens(tokenClass type);
+
 
 int main(int argc, char** argv) {
 	int opcao;
@@ -23,12 +26,12 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	if(opcao == 0) lex();
+	if(opcao == 0) lex(file);
 	if(opcao == 1) parse();
 
 }
 
-int lex()
+void lex(ifstream& file)
 {
 	unordered_map<int, int> tokenCountMap;
 	vector<token> tokensDesconhecidos;
@@ -41,15 +44,15 @@ int lex()
 	int lookahead;
 	while ((lookahead = lexer.yylex()) > 0) 
 	{
-		tokenCountMap[classifyTokens(lookahead)]++;
+		tokenCountMap[classifyTokens((tokenClass)lookahead)]++;
 
 		if (lookahead == UNKNOWN) {
-			tokensDesconhecidos.push_back(token(lookahead, lookahead, lexer.YYText(), lexer.lineno(), yycolumn));
+			tokensDesconhecidos.push_back(token(lookahead, lookahead, lexer.YYText(), lexer.lineno(), yycolumnStart));
 		}
 
 		cout << "<Token: " 
-			 << tokenTypeNames[lookahead] << ", \"" 
-			 << lexer.YYText() << "\", lin: " << lexer.lineno() << ", col:" << yycolumn << ">\n";
+			 << tokenTypeNames.at(static_cast<yytokentype>(lookahead)) << ", \"" 
+			 << lexer.YYText() << "\", lin: " << lexer.lineno() << ", col:" << yycolumnStart << ">\n";
 	}
 
 
@@ -75,28 +78,28 @@ int lex()
 }
 
 
-uint classifyTokens(uint type)
-{
-    if (type >= tokenClass::RESERVED_WORDS && type < tokenClass::PRIMITIVE_TYPE) {
-        return tokenClass::RESERVED_WORDS; 
-   } 
-    else if (type >= tokenClass::PRIMITIVE_TYPE && type < tokenClass::META_ATTRIBUTE) {
-        return tokenClass::PRIMITIVE_TYPE;
-   } 
-    else if (type >= tokenClass::META_ATTRIBUTE && type < tokenClass::CLASS_STEREOTYPES) {
-        return tokenClass::CLASS_STEREOTYPES;
-   }
-    else if (type >= tokenClass::CLASS_STEREOTYPES && type < tokenClass::RELATION_STEREOTYPES) {
-        return tokenClass::CLASS_STEREOTYPES;
-   }
-    else if (type >= tokenClass::RELATION_STEREOTYPES && type < tokenClass::NUMBERL) {
-        return tokenClass::RELATION_STEREOTYPES;
-   }
-
-    return type;
-};
-
-int parse()
+void parse()
 {
 	yyparse();
+}
+
+uint classifyTokens(tokenClass type)
+{
+    if (type >= tokenClass::RESERVED_WORDS && type < tokenClass::PRIMITIVE_TYPE) {
+        return (uint)tokenClass::RESERVED_WORDS; 
+   } 
+    else if (type >= tokenClass::PRIMITIVE_TYPE && type < tokenClass::META_ATTRIBUTE) {
+        return (uint)tokenClass::PRIMITIVE_TYPE;
+   } 
+    else if (type >= tokenClass::META_ATTRIBUTE && type < tokenClass::CLASS_STEREOTYPES) {
+        return (uint)tokenClass::CLASS_STEREOTYPES;
+   }
+    else if (type >= tokenClass::CLASS_STEREOTYPES && type < tokenClass::RELATION_STEREOTYPES) {
+        return (uint)tokenClass::CLASS_STEREOTYPES;
+   }
+    else if (type >= tokenClass::RELATION_STEREOTYPES && type < tokenClass::NUMBER_LITERAL) {
+        return (uint)tokenClass::RELATION_STEREOTYPES;
+   }
+
+    return (uint)type;
 }
