@@ -8,3 +8,7 @@ analizador_sintatico/lex.yy.c
 analizador_sintatico/parser.tab.h
 analizador_sintatico/parser.tab.c
 analizador_sintatico/parser
+analizador_sintatico/parser.exe
+analizador_sintatico/*.o
+*.exe
+

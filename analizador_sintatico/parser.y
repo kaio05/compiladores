@@ -1,16 +1,21 @@
 %{
 #include <iostream>
-#include <cctype>
+#include <string>
+#include <cstdlib>
+#include <cstdio>
 using namespace std;
 
 int yylex(void);
 int yyparse(void);
 void yyerror(const char*);
-%}   
+
+extern int yylineno;
+extern int yycolumn;
+%}
 
 /* Tokens das palavras reservadas e dos estereótipos. */
-%token GENSET DISJOINT COMPLETE GENERAL SPECIFICS WHERE
-%token PACKAGE IMPORT FUNCTIONAL_COMPLEXES
+%token GENSET DISJOINT COMPLETE OVERLAPPING INCOMPLETE GENERAL SPECIFICS WHERE
+%token PACKAGE IMPORT OF FUNCTIONAL_COMPLEXES RELATORS
 
 %token NUMBER STRING BOOLEAN DATE TIME DATETIME
 
@@ -31,62 +36,114 @@ void yyerror(const char*);
 %token INHERENCE VALUE FORMAL CONSTITUTION
 
 %token NUMBER_LITERAL SPECIAL_SYMBOL DATA_TYPE
-%token INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME UNKNOWN
+%token INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME ATTR_NAME UNKNOWN
 
-/* Tokens adicionais para elementos compostos. */
 %token RELATION_KW CARDINALITY DASH AGGREGATION_OP COMPOSITION_OP
-
-%token ENUM SPECIALIZES ATTR_NAME
+%token ENUM SPECIALIZES
 
 %start program
 
 %%
 
-/* 1. Programa completo */
+/* 1. Programa e Pacotes */
 
 program:
-  imports package_decl declarations
+    package_units
 ;
 
-imports:
-  IMPORT package_name
-  | IMPORT package_name'.'NEW_TYPE
+package_units:
+    package_unit
+    | package_units package_unit
+;
+
+package_unit:
+    opt_imports package_decl declarations
+;
+
+opt_imports:
+    %empty
+    | opt_imports import_stmt
+;
+
+import_stmt:
+    IMPORT import_path
+;
+
+import_path:
+    identifier
+    | identifier '.' identifier
 ;
 
 package_decl:
-  PACKAGE package_name {cout << "Declaração de pacote\n";}
+    PACKAGE package_name { cout << "Declaração de pacote\n"; }
 ;
 
 package_name:
-  CLASS_NAME
-  | RELATION_NAME
-  | ATTR_NAME
+    CLASS_NAME
+    | RELATION_NAME
+    | ATTR_NAME
 ;
 
-/* Declarações posteriores ao pacote. */
+identifier:
+    CLASS_NAME
+    | RELATION_NAME
+    | ATTR_NAME
+    | NEW_TYPE
+;
+
+/* Declarações posteriores ao pacote */
 
 declarations:
-  %empty
-  | declarations declaration
+    %empty
+    | declarations declaration
 ;
 
 declaration:
-  class_decl {cout << "Declaração de classe\n";}
-  | data_type_decl {cout << "Declaração de tipo de dados\n";}
-  | enum_decl {cout << "Declaração de enum\n";}
-  | generalization_decl {cout << "Declaração de generalização\n";}
-  | external_rel {cout << "Declaração de relação\n";}
+    class_decl            { cout << "Declaração de classe\n"; }
+    | data_type_decl      { cout << "Declaração de tipo de dados\n"; }
+    | enum_decl           { cout << "Declaração de enum\n"; }
+    | generalization_decl { cout << "Declaração de generalização\n"; }
+    | external_rel        { cout << "Declaração de relação externa\n"; }
 ;
 
-/* 2. Declaração de classes */
+/* 2. Declaração de Classes */
 
 class_decl:
-    class_stereotype CLASS_NAME opt_class_body opt_specializes
+    class_header opt_class_body
+;
+
+class_header:
+    class_stereotype CLASS_NAME opt_meta_stereotype opt_specializes
+;
+
+opt_meta_stereotype:
+    %empty
+    | OF meta_stereotype
+;
+
+meta_stereotype:
+    FUNCTIONAL_COMPLEXES
+    | RELATOR
+    | RELATORS
+    | INTRINSIC_MODES
+    | EXTRINSIC_MODES
+    | CLASS_NAME
+    | RELATION_NAME
 ;
 
 opt_class_body:
     %empty
-    | '{' attributes internal_rels '}'
+    | '{' class_elements '}'
+;
+
+class_elements:
+    %empty
+    | class_elements class_element
+;
+
+class_element:
+    attribute
+    | internal_rel { cout << "Declaração de relação interna\n"; }
 ;
 
 opt_specializes:
@@ -95,8 +152,9 @@ opt_specializes:
 ;
 
 class_list:
-  CLASS_NAME
-  | CLASS_NAME ',' class_list
+    CLASS_NAME
+    | class_list ',' CLASS_NAME
+;
 
 class_stereotype:
     EVENT
@@ -122,28 +180,17 @@ class_stereotype:
   | RELATOR
 ;
 
-/* 3. Declaração de tipos de dados */
-
-data_type_decl:
-    DATA_TYPE NEW_TYPE '{' attributes '}' 
-;
-
-/* Lista de atributos: pode estar vazia. */
-
-attributes:
-    %empty
-  | attribute_list
-;
-
-attribute_list:
-    attribute
-  | attribute_list attribute
-;
+/* 3. Declaração de Atributos */
 
 attribute:
-    RELATION_NAME ':' data_type attribute_modifiers
+    attr_name ':' data_type opt_attribute_modifiers
 ;
 
+attr_name:
+    RELATION_NAME
+    | ATTR_NAME
+    | CLASS_NAME
+;
 
 data_type:
     NUMBER
@@ -154,115 +201,168 @@ data_type:
   | DATETIME
   | CLASS_NAME
   | NEW_TYPE
+  | RELATION_NAME
 ;
 
-/* Meta-atributos opcionais.
-   A sintaxe detalhada deles depende da linguagem. */
-
-attribute_modifiers:
+opt_attribute_modifiers:
     %empty
-  | attribute_modifiers '{' attribute_modifier '}'
+    | opt_attribute_modifiers '{' modifier_list '}'
 ;
 
-attribute_modifier:
+modifier_list:
+    modifier_item
+    | modifier_list ',' modifier_item
+;
+
+modifier_item:
     ORDERED
-  | CONST
-  | DERIVED
-  | SUBSETS CLASS_NAME
-  | REDEFINES CLASS_NAME
+    | CONST
+    | DERIVED
+    | SUBSETS CLASS_NAME
+    | REDEFINES CLASS_NAME
 ;
 
-/* 4. Classes enumeradas */
+/* 4. Tipos de Dados Complexos (Datatype) */
+
+data_type_decl:
+    DATA_TYPE datatype_name '{' opt_datatype_attributes '}'
+;
+
+datatype_name:
+    NEW_TYPE
+    | CLASS_NAME
+    | RELATION_NAME
+;
+
+opt_datatype_attributes:
+    %empty
+    | opt_datatype_attributes attribute
+;
+
+/* 5. Classes Enumeradas (Enum) */
 
 enum_decl:
-    ENUM CLASS_NAME '{' enum_members '}' 
+    ENUM CLASS_NAME '{' enum_members '}'
 ;
 
 enum_members:
-    CLASS_NAME
-  | enum_members ',' CLASS_NAME
+    enum_member
+    | enum_members ',' enum_member
 ;
 
-/* 5. Generalizações */
+enum_member:
+    CLASS_NAME
+    | RELATION_NAME
+    | INSTANCE_NAME
+    | NUMBER_LITERAL
+;
+
+/* 6. Conjuntos de Generalizações (Genset) */
 
 generalization_decl:
-    disjoint_opt complete_opt GENSET CLASS_NAME 
-    WHERE specific_classes SPECIALIZES CLASS_NAME 
-
-  | disjoint_opt complete_opt GENSET CLASS_NAME
-    '{' GENERAL CLASS_NAME SPECIFICS specific_classes '}'
+    genset_modifiers GENSET genset_name WHERE class_list SPECIALIZES CLASS_NAME
+    | genset_modifiers GENSET genset_name '{' genset_body '}'
 ;
 
-disjoint_opt:
-    %empty
-  | DISJOINT
-;
-
-complete_opt:
-    %empty
-  | COMPLETE
-;
-
-specific_classes:
+genset_name:
     CLASS_NAME
-  | specific_classes ',' CLASS_NAME
+    | RELATION_NAME
 ;
 
-/* 6. Relações internas */
-
-internal_rels:
+genset_modifiers:
     %empty
-  | internal_rels relation
+    | genset_modifiers genset_modifier
 ;
 
-relation:
-    '@' relation_type
-    cardinality_opt
-    relation_operator
-    cardinality_opt
-    CLASS_NAME
-  | '@' relation_type
-    cardinality_opt
-    DASH
-    RELATION_NAME
-    DASH
-    cardinality_opt
-    CLASS_NAME
+genset_modifier:
+    DISJOINT
+    | COMPLETE
+    | OVERLAPPING
+    | INCOMPLETE
 ;
 
-cardinality_opt:
-  %empty
-  | CARDINALITY
+genset_body:
+    GENERAL CLASS_NAME SPECIFICS class_list opt_inner_genset_modifiers
+    | SPECIFICS class_list GENERAL CLASS_NAME opt_inner_genset_modifiers
 ;
 
-relation_type:
-  COMPONENT_OF
-  | MEMBER_OF
-  | SUB_COLLECTION_OF
-  | SUB_QUALITY_OF
-  | MEDIATION
+opt_inner_genset_modifiers:
+    %empty
+    | opt_inner_genset_modifiers genset_modifier
 ;
 
-/* Relações externas */
+/* 7. Relações Internas e Externas */
+
+internal_rel:
+    opt_at_stereotype opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias
+;
 
 external_rel:
-    '@' MEDIATION RELATION_KW
-    relation_name_opt
-      CARDINALITY
-    relation_operator
-      CARDINALITY
-    CLASS_NAME
+    opt_at_stereotype RELATION_KW domain_class opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias
 ;
 
-relation_name_opt:
+domain_class:
+    CLASS_NAME
+    | RELATION_NAME
+;
+
+rel_connector:
+    relation_operator
+    | relation_operator rel_ident relation_operator
+;
+
+rel_ident:
+    RELATION_NAME
+    | CLASS_NAME
+;
+
+opt_rel_alias:
     %empty
-  | RELATION_NAME
+    | '(' rel_ident ')'
+;
+
+opt_cardinality:
+    %empty
+    | CARDINALITY
+;
+
+opt_at_stereotype:
+    %empty
+    | '@' relation_type
 ;
 
 relation_operator:
     DASH
-  | AGGREGATION_OP
-  | COMPOSITION_OP
+    | AGGREGATION_OP
+    | COMPOSITION_OP
+;
+
+relation_type:
+    COMPONENT_OF
+  | MEMBER_OF
+  | SUB_COLLECTION_OF
+  | SUB_QUALITY_OF
+  | MEDIATION
+  | MATERIAL
+  | DERIVATION
+  | COMPARATIVE
+  | CHARACTERIZATION
+  | EXTERNAL_DEPENDENCE
+  | INSTANTIATION
+  | TERMINATION
+  | PARTICIPATIONAL
+  | PARTICIPATION
+  | HISTORICAL_DEPENDENCE
+  | CREATION
+  | MANIFESTATION
+  | BRINGS_ABOUT
+  | TRIGGERS
+  | COMPOSITION
+  | AGGREGATION
+  | INHERENCE
+  | VALUE
+  | FORMAL
+  | CONSTITUTION
 ;
 
 %%
@@ -272,30 +372,27 @@ extern FILE * yyin;
 
 int main(int argc, char ** argv)
 {
-	/* se foi passado um nome de arquivo */
-	if (argc > 1)
-	{
-		FILE * file;
-		file = fopen(argv[1], "r");
-		if (!file)
-		{
-			cout << "Arquivo " << argv[1] << " não encontrado!\n";
-			exit(1);
-		}
-		
-		/* entrada ajustada para ler do arquivo */
-		yyin = file;
-	}
+    /* se foi passado um nome de arquivo */
+    if (argc > 1)
+    {
+        FILE * file = fopen(argv[1], "r");
+        if (!file)
+        {
+            cout << "Arquivo " << argv[1] << " não encontrado!\n";
+            return 1;
+        }
+        yyin = file;
+    }
 
-	yyparse();
+    yyparse();
+    return 0;
 }
 
 void yyerror(const char* s)
 {
-    /* variáveis definidas no analisador léxico */
-	extern int yylineno;    
-	extern char * yytext;   
+    extern int yylineno;    
+    extern int yycolumn;
+    extern char * yytext;   
 
-	/* mensagem de erro exibe o símbolo que causou erro e o número da linha */
-    cout << "Erro sintático: símbolo \"" << yytext << "\" (linha " << yylineno << ")\n";
+    cout << "Erro sintático: símbolo \"" << yytext << "\" (linha " << yylineno << ", coluna " << yycolumn << ")\n";
 }
