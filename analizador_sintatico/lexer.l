@@ -1,4 +1,5 @@
 %{
+#include <string.h>
 #include "parser.tab.h"
 
 int column = 1;
@@ -115,18 +116,18 @@ specializes             return SPECIALIZES;
 datatype                return DATA_TYPE;
 enum                    return ENUM;
 
-{number}                return NUMBER_LITERAL;
-{instanceName}          return INSTANCE_NAME;
-{newType}               return NEW_TYPE;
-{className}             return CLASS_NAME;
-{relationName}          return RELATION_NAME;
+{number}                { yylval.str = strdup(yytext); return NUMBER_LITERAL; }
+{instanceName}          { yylval.str = strdup(yytext); return INSTANCE_NAME; }
+{newType}               { yylval.str = strdup(yytext); return NEW_TYPE; }
+{className}             { yylval.str = strdup(yytext); return CLASS_NAME; }
+{relationName}          { yylval.str = strdup(yytext); return RELATION_NAME; }
 
 "{"                     return '{';
 "}"                     return '}';
 ":"                     return ':';
 ","                     return ',';
 "@"                     return '@';
-{cardinality}           return  CARDINALITY;
+{cardinality}           { yylval.str = strdup(yytext); return CARDINALITY; }
 "<>--"                  return AGGREGATION_OP;
 "<o>--"                 return COMPOSITION_OP;
 "--"                    return DASH;

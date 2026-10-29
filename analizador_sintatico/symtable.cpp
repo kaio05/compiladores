@@ -36,7 +36,7 @@ std::string Symbol::toString() const {
 }
 
 // ============================================================================
-// Implementação de SymTable (Tabela de Dispersão Encadeada - Slide 16)
+// Implementação de SymTable (Tabela de Dispersão Encadeada
 // ============================================================================
 
 SymTable::SymTable(SymTable* p, const std::string& name)
@@ -55,7 +55,7 @@ void SymTable::put(const std::string& s, Symbol* sym) {
 }
 
 Symbol* SymTable::get(const std::string& s) {
-    // Busca encadeada percorrendo do escopo atual para o mais externo (Slide 16)
+    // Busca encadeada percorrendo do escopo atual para o mais externo
     for (SymTable* st = this; st != nullptr; st = st->prev) {
         auto it = st->table.find(s);
         if (it != st->table.end()) {

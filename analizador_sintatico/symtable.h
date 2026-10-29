@@ -40,15 +40,14 @@ public:
 
 // ============================================================================
 // Tabela de Símbolos como Tabela de Dispersão Encadeada (Escopos)
-// Implementação baseada no modelo teórico do Prof. Judson Santos Santiago (Slide 16)
 // ============================================================================
 
 class SymTable {
 private:
-    // Tabela de dispersão (std::unordered_map nativa do C++)
+    // Tabela de dispersão
     std::unordered_map<std::string, Symbol*> table;
 
-    // Ponteiro para a tabela do bloco/escopo mais externo (Slide 16)
+    // Ponteiro para a tabela do bloco/escopo mais externo
     SymTable* prev;
 
     // Nome descritivo do escopo
@@ -58,10 +57,10 @@ public:
     SymTable(SymTable* p = nullptr, const std::string& name = "global");
     ~SymTable();
 
-    // Insere símbolo no escopo atual (Slide 16)
+    // Insere símbolo no escopo atual
     void put(const std::string& s, Symbol* sym);
 
-    // Consulta símbolo encadeado do escopo interno para os externos (Slide 16)
+    // Consulta símbolo encadeado do escopo interno para os externos
     Symbol* get(const std::string& s);
 
     // Consulta símbolo apenas no escopo local
@@ -70,6 +69,7 @@ public:
     // Acessores e utilitários
     SymTable* getPrev() const { return prev; }
     const std::string& getScopeName() const { return scopeName; }
+    void setScopeName(const std::string& name) { scopeName = name; }
     const std::unordered_map<std::string, Symbol*>& getTable() const { return table; }
 
     void printTable(std::ostream& out = std::cout) const;
