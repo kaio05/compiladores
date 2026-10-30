@@ -8,3 +8,5 @@ analizador_lexico/lexer
 analizador_sintatico/parser.tab.h
 analizador_sintatico/parser.tab.c
 analizador_sintatico/parser
+
+compiler

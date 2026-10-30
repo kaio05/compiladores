@@ -98,13 +98,18 @@ const map<yytokentype, string> tokenTypeNames = {
     { FORMAL, "FORMAL" },
     { CONSTITUTION, "CONSTITUTION" },
     { NUMBER_LITERAL, "NUMBER_LITERAL" },
-    { SPECIAL_SYMBOL, "SPECIAL_SYMBOL" },
     { DATA_TYPE, "DATA_TYPE" },
     { INSTANCE_NAME, "INSTANCE_NAME" },
     { NEW_TYPE, "NEW_TYPE" },
     { CLASS_NAME, "CLASS_NAME" },
     { RELATION_NAME, "RELATION_NAME" },
     { UNKNOWN, "UNKNOWN" },
+    { OPEN_BRACES, "{" },
+    { CLOSE_BRACES, "}" },
+    { COLON, ":" },
+    { COMMA, "," },
+    { AT, "@" },
+    { DOT, "." },
     { RELATION_KW, "RELATION_KW" },
     { CARDINALITY, "CARDINALITY" },
     { DASH, "DASH" },
@@ -121,13 +126,13 @@ enum class tokenClass {
     CLASS_STEREOTYPES = yytokentype::EVENT,
     RELATION_STEREOTYPES = yytokentype::MATERIAL,
     NUMBER_LITERAL = yytokentype::NUMBER_LITERAL,
-    SPECIAL_SYMBOL, 
     DATA_TYPE,
     INSTANCE_NAME, 
     NEW_TYPE, 
     CLASS_NAME, 
     RELATION_NAME, 
     UNKNOWN_SYMBOL,
+    SPECIAL_SYMBOL = yytokentype::OPEN_BRACES, 
     RELATION_OP = yytokentype::RELATION_KW,
     ENUM,
     ATTR_NAME
@@ -140,13 +145,40 @@ const map<tokenClass, string> tokenClassNames = {
     { tokenClass::CLASS_STEREOTYPES, "Estereótipos de classe" },
     { tokenClass::RELATION_STEREOTYPES, "Estereótipos de relação" },
     { tokenClass::NUMBER_LITERAL, "Números" },
-    { tokenClass::SPECIAL_SYMBOL, "Símbolos especiais" },
     { tokenClass::NEW_TYPE, "Novos tipos" },
     { tokenClass::INSTANCE_NAME, "Instâncias" },
     { tokenClass::CLASS_NAME, "Classes" },
     { tokenClass::RELATION_NAME, "Relações" },
     { tokenClass::UNKNOWN_SYMBOL, "Símbolos desconhecidos" },
+    { tokenClass::SPECIAL_SYMBOL, "Símbolo especial" },
     { tokenClass::RELATION_OP, "Operação de relação" },
     { tokenClass::ENUM, "Enumerador" },
     { tokenClass::ATTR_NAME, "Nome de atributo" }
 };
+
+uint classifyTokens(tokenClass type)
+{
+    if (type >= tokenClass::RESERVED_WORDS && type < tokenClass::PRIMITIVE_TYPE) {
+        return (uint)tokenClass::RESERVED_WORDS; 
+    } 
+    else if (type >= tokenClass::PRIMITIVE_TYPE && type < tokenClass::META_ATTRIBUTE) {
+        return (uint)tokenClass::PRIMITIVE_TYPE;
+    } 
+    else if (type >= tokenClass::META_ATTRIBUTE && type < tokenClass::CLASS_STEREOTYPES) {
+        return (uint)tokenClass::CLASS_STEREOTYPES;
+    }
+    else if (type >= tokenClass::CLASS_STEREOTYPES && type < tokenClass::RELATION_STEREOTYPES) {
+        return (uint)tokenClass::CLASS_STEREOTYPES;
+    }
+    else if (type >= tokenClass::RELATION_STEREOTYPES && type < tokenClass::NUMBER_LITERAL) {
+        return (uint)tokenClass::RELATION_STEREOTYPES;
+    } 
+    else if (type >= tokenClass::SPECIAL_SYMBOL && type < tokenClass::RELATION_OP) {
+        return (uint)tokenClass::SPECIAL_SYMBOL;
+    }
+    else if (type >= tokenClass::RELATION_OP && type < tokenClass::ENUM) {
+        return (uint)tokenClass::RELATION_OP;
+    }
+
+    return (uint)type;
+}

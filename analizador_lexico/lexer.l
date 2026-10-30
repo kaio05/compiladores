@@ -5,7 +5,7 @@ int yycolumnStart = 1;
 int yycolumnEnd = 1;
 
 void updateColumnPos(int leng) {
-    yycolumnStart = column;
+    yycolumnStart = yycolumnEnd;
     yycolumnEnd += leng;
 }
 
@@ -15,6 +15,8 @@ void resetColumn() {
 }
 
 #define YY_USER_ACTION updateColumnPos(yyleng);
+#define YY_DECL int yyFlexLexer::yylex()
+
 %}
 
 %option noyywrap
@@ -121,12 +123,13 @@ enum                    return ENUM;
 {className}             return CLASS_NAME;
 {relationName}          return RELATION_NAME;
 
-"{"                     return '{';
-"}"                     return '}';
-":"                     return ':';
-","                     return ',';
-"@"                     return '@';
-{cardinality}           return  CARDINALITY;
+"{"                     return OPEN_BRACES;
+"}"                     return CLOSE_BRACES;
+":"                     return COLON;
+","                     return COMMA;
+"@"                     return AT;
+"."                     return DOT;
+{cardinality}           return CARDINALITY;
 "<>--"                  return AGGREGATION_OP;
 "<o>--"                 return COMPOSITION_OP;
 "--"                    return DASH;

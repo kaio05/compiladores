@@ -11,7 +11,6 @@ extern int yycolumnStart;
 
 void lex(ifstream& file);
 void parse();
-uint classifyTokens(tokenClass type);
 
 
 int main(int argc, char** argv) {
@@ -50,6 +49,7 @@ void lex(ifstream& file)
 			tokensDesconhecidos.push_back(token(lookahead, lookahead, lexer.YYText(), lexer.lineno(), yycolumnStart));
 		}
 
+		cout << static_cast<yytokentype>(lookahead);
 		cout << "<Token: " 
 			 << tokenTypeNames.at(static_cast<yytokentype>(lookahead)) << ", \"" 
 			 << lexer.YYText() << "\", lin: " << lexer.lineno() << ", col:" << yycolumnStart << ">\n";
@@ -81,25 +81,4 @@ void lex(ifstream& file)
 void parse()
 {
 	yyparse();
-}
-
-uint classifyTokens(tokenClass type)
-{
-    if (type >= tokenClass::RESERVED_WORDS && type < tokenClass::PRIMITIVE_TYPE) {
-        return (uint)tokenClass::RESERVED_WORDS; 
-   } 
-    else if (type >= tokenClass::PRIMITIVE_TYPE && type < tokenClass::META_ATTRIBUTE) {
-        return (uint)tokenClass::PRIMITIVE_TYPE;
-   } 
-    else if (type >= tokenClass::META_ATTRIBUTE && type < tokenClass::CLASS_STEREOTYPES) {
-        return (uint)tokenClass::CLASS_STEREOTYPES;
-   }
-    else if (type >= tokenClass::CLASS_STEREOTYPES && type < tokenClass::RELATION_STEREOTYPES) {
-        return (uint)tokenClass::CLASS_STEREOTYPES;
-   }
-    else if (type >= tokenClass::RELATION_STEREOTYPES && type < tokenClass::NUMBER_LITERAL) {
-        return (uint)tokenClass::RELATION_STEREOTYPES;
-   }
-
-    return (uint)type;
 }

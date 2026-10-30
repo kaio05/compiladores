@@ -1,10 +1,13 @@
 %{
 #include <iostream>
 #include <cctype>
-using namespace std;
+#include <FlexLexer.h>
 
-int yylex(void);
-int yyparse(void);
+using std::cout;
+
+yyFlexLexer lexer;
+
+int yylex();
 void yyerror(const char*);
 %}   
 
@@ -30,13 +33,15 @@ void yyerror(const char*);
 %token BRINGS_ABOUT TRIGGERS COMPOSITION AGGREGATION
 %token INHERENCE VALUE FORMAL CONSTITUTION
 
-%token NUMBER_LITERAL SPECIAL_SYMBOL DATA_TYPE
+%token NUMBER_LITERAL DATA_TYPE
 %token INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME UNKNOWN
 
-/* Tokens adicionais para elementos compostos. */
+%token OPEN_BRACES CLOSE_BRACES COLON COMMA AT DOT
+
 %token RELATION_KW CARDINALITY DASH AGGREGATION_OP COMPOSITION_OP
 
 %token ENUM ATTR_NAME
+
 
 %start program
 
@@ -50,7 +55,7 @@ program:
 
 imports:
   IMPORT package_name
-  | IMPORT package_name'.'NEW_TYPE
+  | IMPORT package_name DOT NEW_TYPE
 ;
 
 package_decl:
@@ -86,7 +91,7 @@ class_decl:
 
 opt_class_body:
     %empty
-    | '{' attributes internal_rels '}'
+    | OPEN_BRACES attributes internal_rels CLOSE_BRACES
 ;
 
 opt_specializes:
@@ -96,7 +101,8 @@ opt_specializes:
 
 class_list:
   CLASS_NAME
-  | CLASS_NAME ',' class_list
+  | CLASS_NAME COMMA class_list
+;
 
 class_stereotype:
     EVENT
@@ -125,7 +131,7 @@ class_stereotype:
 /* 3. Declaração de tipos de dados */
 
 data_type_decl:
-    DATA_TYPE NEW_TYPE '{' attributes '}' 
+    DATA_TYPE NEW_TYPE OPEN_BRACES attributes CLOSE_BRACES 
 ;
 
 /* Lista de atributos: pode estar vazia. */
@@ -141,7 +147,7 @@ attribute_list:
 ;
 
 attribute:
-    RELATION_NAME ':' data_type attribute_modifiers
+    RELATION_NAME COLON data_type attribute_modifiers
 ;
 
 
@@ -161,7 +167,7 @@ data_type:
 
 attribute_modifiers:
     %empty
-  | attribute_modifiers '{' attribute_modifier '}'
+  | attribute_modifiers OPEN_BRACES attribute_modifier CLOSE_BRACES
 ;
 
 attribute_modifier:
@@ -175,12 +181,12 @@ attribute_modifier:
 /* 4. Classes enumeradas */
 
 enum_decl:
-    ENUM CLASS_NAME '{' enum_members '}' 
+    ENUM CLASS_NAME OPEN_BRACES enum_members CLOSE_BRACES 
 ;
 
 enum_members:
     CLASS_NAME
-  | enum_members ',' CLASS_NAME
+  | enum_members COMMA CLASS_NAME
 ;
 
 /* 5. Generalizações */
@@ -190,7 +196,7 @@ generalization_decl:
     WHERE specific_classes SPECIALIZES CLASS_NAME 
 
   | disjoint_opt complete_opt GENSET CLASS_NAME
-    '{' GENERAL CLASS_NAME SPECIFICS specific_classes '}'
+    OPEN_BRACES GENERAL CLASS_NAME SPECIFICS specific_classes CLOSE_BRACES
 ;
 
 disjoint_opt:
@@ -205,7 +211,7 @@ complete_opt:
 
 specific_classes:
     CLASS_NAME
-  | specific_classes ',' CLASS_NAME
+  | specific_classes COMMA CLASS_NAME
 ;
 
 /* 6. Relações internas */
@@ -216,12 +222,12 @@ internal_rels:
 ;
 
 relation:
-    '@' relation_type
+    AT relation_type
     cardinality_opt
     relation_operator
     cardinality_opt
     CLASS_NAME
-  | '@' relation_type
+  | AT relation_type
     cardinality_opt
     DASH
     RELATION_NAME
@@ -246,7 +252,7 @@ relation_type:
 /* Relações externas */
 
 external_rel:
-    '@' MEDIATION RELATION_KW
+    AT MEDIATION RELATION_KW
     relation_name_opt
       CARDINALITY
     relation_operator
@@ -270,12 +276,17 @@ relation_operator:
 /* definido pelo analisador léxico */
 extern FILE * yyin;  
 
+int yylex() 
+{
+  return lexer.yylex();
+}
+
 void yyerror(const char* s)
 {
-    /* variáveis definidas no analisador léxico */
-	extern int yylineno;    
-	extern char * yytext;   
+  extern int yycolumnStart;
+  extern int yycolumnEnd;
 
-	/* mensagem de erro exibe o símbolo que causou erro e o número da linha */
-    cout << "Erro sintático: símbolo \"" << yytext << "\" (linha " << yylineno << ")\n";
+  cout << "Erro sintático: símbolo \"" << lexer.YYText() 
+  << "\" (linha " << lexer.lineno() << "), " 
+  << " (coluna " << yycolumnStart << " a " << yycolumnEnd << ")\n";
 }
