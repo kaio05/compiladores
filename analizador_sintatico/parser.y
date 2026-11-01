@@ -1,11 +1,10 @@
 %{
+#include "../analizador_lexico/AnalisadorLexico.h"
 #include <iostream>
-#include <cctype>
-#include <FlexLexer.h>
 
 using std::cout;
 
-yyFlexLexer lexer;
+AnalisadorLexico AnalisadorLexicoSintatico;
 
 int yylex();
 void yyerror(const char*);
@@ -273,20 +272,16 @@ relation_operator:
 
 %%
 
-/* definido pelo analisador léxico */
-extern FILE * yyin;  
-
 int yylex() 
 {
-  return lexer.yylex();
+  return AnalisadorLexicoSintatico.yylex();
 }
 
 void yyerror(const char* s)
 {
-  extern int yycolumnStart;
-  extern int yycolumnEnd;
+  token thisToken = AnalisadorLexicoSintatico.CurrentToken();
 
-  cout << "Erro sintático: símbolo \"" << lexer.YYText() 
-  << "\" (linha " << lexer.lineno() << "), " 
-  << " (coluna " << yycolumnStart << " a " << yycolumnEnd << ")\n";
+  cout << "Erro sintático: símbolo \"" << thisToken.lexeme << "\"" 
+  << " (linha " <<  thisToken.line  << "), "
+  << " (coluna " << thisToken.columnStart << " a " << thisToken.columnEnd << ")\n";
 }
