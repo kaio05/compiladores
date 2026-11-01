@@ -117,11 +117,11 @@ specializes             return SPECIALIZES;
 datatype                return DATA_TYPE;
 enum                    return ENUM;
 
-{number}                return NUMBER_LITERAL;
-{instanceName}          return INSTANCE_NAME;
-{newType}               return NEW_TYPE;
-{className}             return CLASS_NAME;
-{relationName}          return RELATION_NAME;
+{number}                { yylval.str = strdup(yytext); return NUMBER_LITERAL; }
+{instanceName}          { yylval.str = strdup(yytext); return INSTANCE_NAME; }
+{newType}               { yylval.str = strdup(yytext); return NEW_TYPE; }
+{className}             { yylval.str = strdup(yytext); return CLASS_NAME; }
+{relationName}          { yylval.str = strdup(yytext); return RELATION_NAME; }
 
 "{"                     return OPEN_BRACES;
 "}"                     return CLOSE_BRACES;
