@@ -5,8 +5,8 @@ CPP=g++
 FLEX=flex
 BISON=bison
 
-parser: lex.yy.c parser.tab.c symtable.o
-	$(CPP) lex.yy.c parser.tab.c symtable.o -std=gnu++20 -o parser
+parser: lex.yy.c parser.tab.c symtable.o relatorio.cpp
+	$(CPP) lex.yy.c parser.tab.c symtable.o relatorio.cpp -std=gnu++20 -o parser
 
 symtable.o: symtable.cpp symtable.h
 	$(CPP) -c symtable.cpp -std=gnu++20 -o symtable.o

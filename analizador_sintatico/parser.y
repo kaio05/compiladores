@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include "symtable.h"
+#include "relatorio.h"
 
 using namespace std;
 
@@ -32,6 +33,10 @@ void exitScope() {
     }
 }
 %}
+
+%define parse.error detailed
+%define parse.lac full
+%locations
 
 %union {
     char* str;
@@ -553,14 +558,16 @@ int main(int argc, char ** argv)
     }
     allScopes.clear();
 
+    gerar_relatorio();
+
     return parseResult;
 }
 
-void yyerror(const char* s)
-{
-    extern int yylineno;    
-    extern int yycolumn;
-    extern char * yytext;   
-
-    cout << "Erro sintático: símbolo \"" << yytext << "\" (linha " << yylineno << ", coluna " << yycolumn << ")\n";
+void yyerror(const char* mensagem) {
+    registrar_erro(
+        yylloc.first_line,
+        yylloc.first_column,
+        mensagem,
+        "Verifique a sintaxe e os tokens esperados."
+    );
 }
