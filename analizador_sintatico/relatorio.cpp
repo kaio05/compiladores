@@ -1,64 +1,93 @@
+
 #include "relatorio.h"
-#include <cstdio>
+#include <iostream>
+#include <string>
+#include <vector>
 
-static ErroSintatico erros[MAX_ERROS];
-static int quantidade_erros = 0;
+static std::vector<ErroSintatico> erros;
 
+// Converte a categoria do erro em texto.
+static std::string obter_nome_tipo(TipoErro tipo) {
+    switch (tipo) {
+        case TipoErro::PACOTE:
+            return "PACOTE";
+
+        case TipoErro::CLASSE:
+            return "CLASSE";
+
+        case TipoErro::ATRIBUTO:
+            return "ATRIBUTO";
+
+        case TipoErro::DATA_TYPE:
+            return "DATA_TYPE";
+
+        case TipoErro::ENUM:
+            return "ENUM";
+
+        case TipoErro::GENSET:
+            return "GENSET";
+
+        case TipoErro::RELACAO:
+            return "RELACAO";
+
+        case TipoErro::GENERICO:
+            return "GENERICO";
+
+        default:
+            return "DESCONHECIDO";
+    }
+}
+
+// Registra um novo erro.
 void registrar_erro(
+    TipoErro tipo,
     int linha,
     int coluna,
-    const char* mensagem,
-    const char* sugestao
+    const std::string& mensagem,
+    const std::string& sugestao
 ) {
-    if (quantidade_erros >= MAX_ERROS) {
+    erros.push_back({
+        tipo,
+        linha,
+        coluna,
+        mensagem,
+        sugestao
+    });
+}
+
+// Exibe todos os erros registrados.
+void gerar_relatorio() {
+    std::cout << "\n========== RELATORIO DE ERROS ==========\n";
+
+    if (erros.empty()) {
+        std::cout << "\nNenhum erro encontrado.\n";
         return;
     }
 
-    ErroSintatico* erro = &erros[quantidade_erros++];
+    for (size_t i = 0; i < erros.size(); i++) {
+        const ErroSintatico& erro = erros[i];
 
-    erro->linha = linha;
-    erro->coluna = coluna;
+        std::cout << "\nErro " << i + 1 << "\n";
 
-    std::snprintf(
-        erro->mensagem,
-        sizeof(erro->mensagem),
-        "%s",
-        mensagem
-    );
+        std::cout << "Categoria: "
+                  << obter_nome_tipo(erro.tipo) << "\n";
 
-    std::snprintf(
-        erro->sugestao,
-        sizeof(erro->sugestao),
-        "%s",
-        sugestao
-    );
-}
+        std::cout << "Linha: " << erro.linha << "\n";
+        std::cout << "Coluna: " << erro.coluna << "\n";
 
-void gerar_relatorio(void) {
-    std::printf("\n=== RELATORIO DE ERROS ===\n");
+        std::cout << "Problema: "
+                  << erro.mensagem << "\n";
 
-    for (int i = 0; i < quantidade_erros; i++) {
-        const ErroSintatico* erro = &erros[i];
+        std::cout << "Sugestao: "
+                  << erro.sugestao << "\n";
 
-        std::printf(
-            "\nErro %d\n"
-            "Linha: %d, Coluna: %d\n"
-            "Problema: %s\n"
-            "Sugestao: %s\n",
-            i + 1,
-            erro->linha,
-            erro->coluna,
-            erro->mensagem,
-            erro->sugestao
-        );
+        std::cout << "----------------------------------------\n";
     }
 
-    std::printf(
-        "\nTotal de erros: %d\n",
-        quantidade_erros
-    );
+    std::cout << "\nTotal de erros: " << erros.size() << "\n";
 }
 
-int obter_quantidade_erros(void) {
-    return quantidade_erros;
+// Retorna a quantidade de erros registrados.
+int obter_quantidade_erros() {
+    return static_cast<int>(erros.size());
 }

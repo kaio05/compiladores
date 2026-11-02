@@ -32,6 +32,8 @@ void exitScope() {
         currentScope = currentScope->getPrev();
     }
 }
+
+TipoErro contextoAtual = TipoErro::GENERICO;
 %}
 
 %define parse.error detailed
@@ -112,6 +114,7 @@ package_decl:
         currentScope->setScopeName("package " + pkgName);
         currentScope->put("package " + pkgName, new Symbol(pkgName, SymbolCategory::PACKAGE, "package", yylineno, yycolumn, currentScope->getScopeName()));
         cout << "Declaração de pacote: " << pkgName << "\n";
+        contextoAtual = TipoErro::PACOTE;
     }
 ;
 
@@ -136,11 +139,11 @@ declarations:
 ;
 
 declaration:
-    class_decl            { cout << "Declaração de classe\n"; }
-    | data_type_decl      { cout << "Declaração de tipo de dados\n"; }
-    | enum_decl           { cout << "Declaração de enum\n"; }
-    | generalization_decl { cout << "Declaração de generalização\n"; }
-    | external_rel        { cout << "Declaração de relação externa\n"; }
+    class_decl            { cout << "Declaração de classe\n"; contextoAtual = TipoErro::CLASSE; }
+    | data_type_decl      { cout << "Declaração de tipo de dados\n"; contextoAtual = TipoErro::DATA_TYPE; }
+    | enum_decl           { cout << "Declaração de enum\n"; contextoAtual = TipoErro::ENUM; }
+    | generalization_decl { cout << "Declaração de generalização\n"; contextoAtual = TipoErro::GENSET; }
+    | external_rel        { cout << "Declaração de relação externa\n"; contextoAtual = TipoErro::RELACAO; }
 ;
 
 /* 2. Declaração de Classes */
@@ -249,6 +252,7 @@ class_stereotype:
 
 attribute:
     attr_name ':' data_type opt_attribute_modifiers {
+        contextoAtual = TipoErro::ATRIBUTO;
         string attrName = $1;
         string typeName = ($3 ? $3 : "");
 
@@ -439,6 +443,7 @@ internal_rel:
             currentScope->put(relName, new Symbol(relName, SymbolCategory::RELATION, relType, yylineno, yycolumn, currentScope->getScopeName()));
         }
         cout << "Declaração de relação interna\n";
+        contextoAtual = TipoErro::RELACAO;
     }
 ;
 
@@ -564,10 +569,40 @@ int main(int argc, char ** argv)
 }
 
 void yyerror(const char* mensagem) {
+    extern int yylineno;    
+    extern int yycolumn;
+    string sugestao;
+    switch (contextoAtual) {
+        case TipoErro::PACOTE:
+            sugestao = "Verifique a declaração do pacote";
+            break;
+        case TipoErro::CLASSE:
+            sugestao = "Verifique a declaração da classe";
+            break;
+        case TipoErro::ATRIBUTO:
+            sugestao = "Verifique a declaração do atributo";
+            break;
+        case TipoErro::DATA_TYPE:
+            sugestao = "Verifique a declaração do pacote";
+            break;
+        case TipoErro::ENUM:
+            sugestao = "Verifique a declaração do enum";
+            break;   
+        case TipoErro::GENSET:
+            sugestao = "Verifique a declaração do genset";
+            break;
+        case TipoErro::RELACAO:
+            sugestao = "Verifique a declaração da relacao";
+            break;
+        default:
+            sugestao = "Verifique a sintaxe";
+            break;
+    }
     registrar_erro(
-        yylloc.first_line,
-        yylloc.first_column,
-        mensagem,
-        "Verifique a sintaxe e os tokens esperados."
-    );
+                contextoAtual,
+                yylineno,
+                yycolumn,
+                mensagem,
+                sugestao
+            );
 }
