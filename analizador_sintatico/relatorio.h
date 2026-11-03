@@ -1,27 +1,38 @@
 #ifndef RELATORIO_H
 #define RELATORIO_H
 
-#define MAX_ERROS 100
+#include <string>
+#include <vector>
 
-typedef struct {
+enum class TipoErro {
+    PACOTE,
+    CLASSE,
+    ATRIBUTO,
+    DATA_TYPE,
+    ENUM,
+    GENSET,
+    RELACAO,
+    GENERICO
+};
+
+struct ErroSintatico {
+    TipoErro tipo;
     int linha;
     int coluna;
-    char mensagem[256];
-    char sugestao[256];
-} ErroSintatico;
+    int colunaFim;
+    std::string mensagem;
+    std::string sugestao;
+};
 
-// Registra um novo erro sintático.
 void registrar_erro(
+    TipoErro tipo,
     int linha,
     int coluna,
-    const char* mensagem,
-    const char* sugestao
+    int colunaFim,
+    const std::string& mensagem,
+    const std::string& sugestao
 );
 
-// Exibe os erros registrados.
-void gerar_relatorio(void);
-
-// Retorna a quantidade de erros registrados.
-int obter_quantidade_erros(void);
+void gerar_relatorio();
 
 #endif
