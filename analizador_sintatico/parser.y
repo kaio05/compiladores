@@ -1,5 +1,5 @@
 %{
-#include "../analizador_lexico/AnalisadorLexico.h"
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -8,19 +8,16 @@
 #include <cstring>
 #include "symtable.h"
 #include "relatorio.h"
+#include "../analizador_lexico/AnalisadorLexico.h"
 
 using namespace std;
 
-AnalisadorLexico AnalisadorLexicoSintatico;
-
-int yylex(void);
-int yyparse(void);
+int yylex();
+int yyparse();
 void yyerror(const char*);
 
-extern int yylineno;
-extern int yycolumn;
+AnalisadorLexico* AnalisadorLexicoSintatico = new AnalisadorLexico();
 
-// Gerenciamento de Escopos da Tabela de Símbolos
 SymTable* globalScope = new SymTable(nullptr, "global");
 SymTable* currentScope = globalScope;
 vector<SymTable*> allScopes = { globalScope };
@@ -70,6 +67,8 @@ void exitScope() {
 %token <str> NUMBER_LITERAL SPECIAL_SYMBOL DATA_TYPE
 %token <str> INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME ATTR_NAME UNKNOWN
 
+%token OPEN_BRACES CLOSE_BRACES OPEN_PARENTHESES CLOSE_PARENTHESES COLON COMMA AT DOT
+
 %token RELATION_KW <str> CARDINALITY DASH AGGREGATION_OP COMPOSITION_OP
 %token ENUM SPECIALIZES
 
@@ -106,15 +105,29 @@ import_stmt:
 
 import_path:
     identifier
-    | identifier '.' identifier
+    | identifier DOT identifier
 ;
 
 package_decl:
     PACKAGE package_name {
         string pkgName = $2;
         currentScope->setScopeName("package " + pkgName);
-        currentScope->put("package " + pkgName, new Symbol(pkgName, SymbolCategory::PACKAGE, "package", yylineno, yycolumn, currentScope->getScopeName()));
+
+        symbol* smb = AnalisadorLexicoSintatico->SymbolAtBack(0);
+        smb->scope = currentScope->getScopeName();
+
+        currentScope->put("package " + pkgName, new symbol(
+            smb->type,
+            smb->category,
+            smb->name,
+            smb->line,
+            smb->columnStart,
+            smb->columnEnd,
+            smb->scope
+        ));
         cout << "Declaração de pacote: " << pkgName << "\n";
+
+        free($2);
     }
 ;
 
@@ -159,16 +172,30 @@ class_header:
         string className = $2;
         string stereotype = ($1 ? $1 : "");
 
-        Symbol* existing = currentScope->getLocal(className);
-        if (existing != nullptr && existing->category == SymbolCategory::CLASS) {
-            cerr << "Erro semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+        symbol* existing = currentScope->getLocal(className);
+        if (existing != nullptr && existing->category == SymbolCategory::CLASS_NAME) {
+            cerr << "Erro semântico [Linha " << existing->line << ", " 
+                 << " Coluna " << existing->columnStart << " a " << existing->columnEnd
                  << "]: Classe '" << className << "' já declarada no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(className, new Symbol(className, SymbolCategory::CLASS, stereotype, yylineno, yycolumn, currentScope->getScopeName()));
-        }
+            symbol* classStereotype = AnalisadorLexicoSintatico->SymbolAtBack(3);
+            symbol* nameClass = AnalisadorLexicoSintatico->SymbolAtBack(2);
 
+            currentScope->put(className, new symbol(
+                classStereotype->type, 
+                classStereotype->category, 
+                className, 
+                nameClass->line,
+                nameClass->columnStart,
+                nameClass->columnEnd, 
+                currentScope->getScopeName()
+            ));
+        }
         enterScope(className);
+
+        free($2);
+
     }
 ;
 
@@ -189,7 +216,7 @@ meta_stereotype:
 
 opt_class_body:
     %empty
-    | '{' class_elements '}'
+    | OPEN_BRACES class_elements CLOSE_BRACES
 ;
 
 class_elements:
@@ -211,16 +238,23 @@ class_list:
     CLASS_NAME {
         string baseClass = $1;
         if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Aviso semântico " 
+                 << " [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
                  << "]: Classe base '" << baseClass << "' referenciada ainda não foi encontrada no escopo.\n";
         }
+
+        free($1);
     }
-    | class_list ',' CLASS_NAME {
+    | class_list COMMA CLASS_NAME {
         string baseClass = $3;
         if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
                  << "]: Classe base '" << baseClass << "' referenciada ainda não foi encontrada no escopo.\n";
         }
+
+        free($3);
     }
 ;
 
@@ -251,17 +285,32 @@ class_stereotype:
 /* 3. Declaração de Atributos */
 
 attribute:
-    attr_name ':' data_type opt_attribute_modifiers {
+    attr_name COLON data_type opt_attribute_modifiers {
         string attrName = $1;
         string typeName = ($3 ? $3 : "");
 
         if (currentScope->getLocal(attrName) != nullptr) {
-            cerr << "Erro semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
                  << "]: Atributo '" << attrName << "' duplicado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(attrName, new Symbol(attrName, SymbolCategory::ATTRIBUTE, typeName, yylineno, yycolumn, currentScope->getScopeName()));
+            symbol* atribute = AnalisadorLexicoSintatico->SymbolAtBack(3);
+            symbol* typeData = AnalisadorLexicoSintatico->SymbolAtBack(1);
+
+            currentScope->put(attrName, new symbol(
+                typeData->type, 
+                typeData->category, 
+                atribute->name, 
+                atribute->line, 
+                atribute->columnStart,
+                atribute->columnEnd, 
+                currentScope->getScopeName()
+            ));
         }
+
+        free($1);
+        free($3);
     }
 ;
 
@@ -272,12 +321,12 @@ attr_name:
 ;
 
 data_type:
-    NUMBER        { $$ = (char*)"number"; }
-  | STRING        { $$ = (char*)"string"; }
-  | BOOLEAN       { $$ = (char*)"boolean"; }
-  | DATE          { $$ = (char*)"date"; }
-  | TIME          { $$ = (char*)"time"; }
-  | DATETIME      { $$ = (char*)"datetime"; }
+    NUMBER        { $$ = strdup("number"); }
+  | STRING        { $$ = strdup("string"); }
+  | BOOLEAN       { $$ = strdup("boolean"); }
+  | DATE          { $$ = strdup("date"); }
+  | TIME          { $$ = strdup("time"); }
+  | DATETIME      { $$ = strdup("datetime"); }
   | CLASS_NAME    { $$ = $1; }
   | NEW_TYPE      { $$ = $1; }
   | RELATION_NAME { $$ = $1; }
@@ -285,12 +334,12 @@ data_type:
 
 opt_attribute_modifiers:
     %empty
-    | opt_attribute_modifiers '{' modifier_list '}'
+    | opt_attribute_modifiers OPEN_BRACES modifier_list CLOSE_BRACES
 ;
 
 modifier_list:
     modifier_item
-    | modifier_list ',' modifier_item
+    | modifier_list COMMA modifier_item
 ;
 
 modifier_item:
@@ -307,14 +356,28 @@ data_type_decl:
     DATA_TYPE datatype_name {
         string dtName = $2;
         if (currentScope->getLocal(dtName) != nullptr) {
-            cerr << "Erro semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
                  << "]: Tipo de dados '" << dtName << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(dtName, new Symbol(dtName, SymbolCategory::DATATYPE, "datatype", yylineno, yycolumn, currentScope->getScopeName()));
+            symbol* newType = AnalisadorLexicoSintatico->SymbolAtBack(0);
+
+            currentScope->put(dtName, new symbol(
+                yytokentype::DATA_TYPE, 
+                SymbolCategory::DATA_TYPE, 
+                dtName, 
+                newType->line, 
+                newType->columnStart,
+                newType->columnEnd, 
+                currentScope->getScopeName()
+            ));
         }
+
         enterScope(dtName);
-    } '{' opt_datatype_attributes '}' {
+
+        free($2);
+    } OPEN_BRACES opt_datatype_attributes CLOSE_BRACES {
         exitScope();
     }
 ;
@@ -336,14 +399,27 @@ enum_decl:
     ENUM CLASS_NAME {
         string enumName = $2;
         if (currentScope->getLocal(enumName) != nullptr) {
-            cerr << "Erro semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() << " a " << AnalisadorLexicoSintatico->currentColumnEnd()
                  << "]: Enum '" << enumName << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(enumName, new Symbol(enumName, SymbolCategory::ENUM, "enum", yylineno, yycolumn, currentScope->getScopeName()));
+            symbol* newEnum = AnalisadorLexicoSintatico->SymbolAtBack(0);
+            currentScope->put(enumName, new symbol(
+                yytokentype::ENUM,
+                SymbolCategory::ENUM, 
+                enumName, 
+                newEnum->line, 
+                newEnum->columnStart, 
+                newEnum->columnEnd, 
+                currentScope->getScopeName()
+            ));
         }
+
         enterScope(enumName);
-    } '{' enum_members '}' {
+
+        free($2);
+    } OPEN_BRACES enum_members CLOSE_BRACES {
         exitScope();
     }
 ;
@@ -351,11 +427,33 @@ enum_decl:
 enum_members:
     enum_member {
         string mem = $1;
-        currentScope->put(mem, new Symbol(mem, SymbolCategory::ENUM, currentScope->getScopeName(), yylineno, yycolumn, currentScope->getScopeName()));
+        symbol* newEnumMember = AnalisadorLexicoSintatico->SymbolAtBack(0);
+        currentScope->put(mem, new symbol(
+            yytokentype::CLASS_NAME,
+            SymbolCategory::ENUM, 
+            mem, 
+            newEnumMember->line, 
+            newEnumMember->columnStart, 
+            newEnumMember->columnEnd,
+            currentScope->getScopeName()
+        ));
+
+        free($1);
     }
-    | enum_members ',' enum_member {
+    | enum_members COMMA enum_member {
         string mem = $3;
-        currentScope->put(mem, new Symbol(mem, SymbolCategory::ENUM, currentScope->getScopeName(), yylineno, yycolumn, currentScope->getScopeName()));
+        symbol* newEnumMember = AnalisadorLexicoSintatico->SymbolAtBack(0);
+        currentScope->put(mem, new symbol(
+            yytokentype::CLASS_NAME,
+            SymbolCategory::ENUM, 
+            mem, 
+            newEnumMember->line, 
+            newEnumMember->columnStart, 
+            newEnumMember->columnEnd,
+            currentScope->getScopeName()
+        ));
+
+        free($3);
     }
 ;
 
@@ -372,26 +470,54 @@ generalization_decl:
     genset_modifiers GENSET genset_name WHERE class_list SPECIALIZES CLASS_NAME {
         string gname = $3;
         if (currentScope->getLocal(gname) != nullptr) {
-            cerr << "Erro semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() << " a " << AnalisadorLexicoSintatico->currentColumnEnd() 
                  << "]: Genset '" << gname << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(gname, new Symbol(gname, SymbolCategory::GENSET, "genset", yylineno, yycolumn, currentScope->getScopeName()));
+            symbol* newGen = AnalisadorLexicoSintatico->SymbolAtBack(4);
+            currentScope->put(gname, new symbol(
+                yytokentype::GENSET,
+                SymbolCategory::RESERVED_WORDS, 
+                gname, 
+                newGen->line, 
+                newGen->columnStart,
+                newGen->columnEnd, 
+                currentScope->getScopeName()
+            ));
         }
+
         string baseClass = $7;
         if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << yylineno << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
+            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline()
+                 << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
         }
+
+        free($3);
+        free($7);
     }
-    | genset_modifiers GENSET genset_name '{' genset_body '}' {
+    | genset_modifiers GENSET genset_name OPEN_BRACES genset_body CLOSE_BRACES {
         string gname = $3;
         if (currentScope->getLocal(gname) != nullptr) {
-            cerr << "Erro semântico [Linha " << yylineno << ", Coluna " << yycolumn 
+            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline()
+                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() << " a " << AnalisadorLexicoSintatico->currentColumnEnd() 
                  << "]: Genset '" << gname << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(gname, new Symbol(gname, SymbolCategory::GENSET, "genset", yylineno, yycolumn, currentScope->getScopeName()));
+            symbol* genType = AnalisadorLexicoSintatico->SymbolAtBack(5);
+            symbol* newGen = AnalisadorLexicoSintatico->SymbolAtBack(3);
+            currentScope->put(gname, new symbol(
+                genType->type, 
+                SymbolCategory::RESERVED_WORDS, 
+                gname, 
+                newGen->line, 
+                newGen->columnStart,
+                newGen->columnEnd, 
+                currentScope->getScopeName()
+            ));
         }
+
+        free($3);
     }
 ;
 
@@ -416,14 +542,20 @@ genset_body:
     GENERAL CLASS_NAME SPECIFICS class_list opt_inner_genset_modifiers {
         string baseClass = $2;
         if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << yylineno << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
+            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline()
+                 << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
         }
+
+        free($2);
     }
     | SPECIFICS class_list GENERAL CLASS_NAME opt_inner_genset_modifiers {
         string baseClass = $4;
         if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << yylineno << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
+            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
+                 << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
         }
+
+        free($4);
     }
 ;
 
@@ -439,9 +571,24 @@ internal_rel:
         if ($3 != nullptr) {
             string relName = $3;
             string relType = ($1 != nullptr ? $1 : "relation");
-            currentScope->put(relName, new Symbol(relName, SymbolCategory::RELATION, relType, yylineno, yycolumn, currentScope->getScopeName()));
+
+            symbol* relationName = AnalisadorLexicoSintatico->SymbolAtBack(3);
+            symbol* relationType = AnalisadorLexicoSintatico->SymbolAtBack(5);
+            currentScope->put(relName, new symbol(
+                relationType->type, 
+                relationType->category, 
+                relName, 
+                relationName->line, 
+                relationName->columnStart,
+                relationName->columnEnd, 
+                currentScope->getScopeName()
+            ));
         }
+
         cout << "Declaração de relação interna\n";
+
+        if ($3 != nullptr) free($3);
+        if ($5 != nullptr) free($5);
     }
 ;
 
@@ -449,8 +596,24 @@ external_rel:
     opt_at_stereotype RELATION_KW domain_class opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
         string relName = $3;
         string relType = ($1 != nullptr ? $1 : "relation");
-        currentScope->put(relName, new Symbol(relName, SymbolCategory::RELATION, relType, yylineno, yycolumn, currentScope->getScopeName()));
+
+        symbol* relationName = AnalisadorLexicoSintatico->SymbolAtBack(5);
+        symbol* relationType = AnalisadorLexicoSintatico->SymbolAtBack(7);
+
+        currentScope->put(relName, new symbol(
+            relationType->type,
+            relationType->category, 
+            relName, 
+            relationName->line, 
+            relationName->columnStart, 
+            relationName->columnEnd, 
+            currentScope->getScopeName()
+        ));
+
         cout << "Declaração de relação externa\n";
+
+        if ($3 != nullptr) free($3);
+        if ($5 != nullptr) free($5);
     }
 ;
 
@@ -471,7 +634,7 @@ rel_ident:
 
 opt_rel_alias:
     %empty
-    | '(' rel_ident ')'
+    | OPEN_PARENTHESES rel_ident CLOSE_PARENTHESES
 ;
 
 opt_cardinality:
@@ -481,7 +644,7 @@ opt_cardinality:
 
 opt_at_stereotype:
     %empty { $$ = nullptr; }
-    | '@' relation_type { $$ = $2; }
+    | AT relation_type { $$ = $2; }
 ;
 
 relation_operator:
@@ -520,24 +683,24 @@ relation_type:
 
 %%
 
-/* definido pelo analisador léxico */
-extern FILE * yyin;  
-
 int main(int argc, char ** argv)
 {
-    /* se foi passado um nome de arquivo */
-    if (argc > 1)
-    {
-        FILE * file = fopen(argv[1], "r");
-        if (!file)
-        {
-            cout << "Arquivo " << argv[1] << " não encontrado!\n";
-            return 1;
-        }
-        yyin = file;
+    if (argc <= 1 || argc > 2) {
+        cerr << "Para usar o parser utilize o comando: ./parser <arquivo.tonto>\n";
     }
 
+    /* se foi passado um nome de arquivo */
+    ifstream file(argv[1]);
+    if (!file.is_open())
+    {
+        cout << "Arquivo " << argv[1] << " não encontrado!\n";
+        return 1;
+    }
+
+    AnalisadorLexicoSintatico->yySwitchStreams(file, cout);
     int parseResult = yyparse();
+
+    delete AnalisadorLexicoSintatico;
 
     if (parseResult == 0)
     {
@@ -560,10 +723,15 @@ int main(int argc, char ** argv)
         delete table;
     }
     allScopes.clear();
-
+    
     gerar_relatorio();
 
+    
     return parseResult;
+}
+
+int yylex() {
+    return AnalisadorLexicoSintatico->yylex();
 }
 
 void yyerror(const char* mensagem) {

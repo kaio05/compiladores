@@ -2,12 +2,12 @@
 
 // ------------------------------------------------------------------------------
 
-#include <FlexLexer.h>
 #include <fstream>
 #include <string>
 #include <vector>
-#include <map>
 #include <unordered_map>
+#include <FlexLexer.h>
+#include "../symbol/Symbol.h"
 #include "../analizador_sintatico/parser.tab.h"
 
 // ------------------------------------------------------------------------------
@@ -18,7 +18,6 @@ using std::ifstream;
 using std::ostream;
 using std::string;
 using std::vector;
-using std::map;
 using std::unordered_map;
 
 // ------------------------------------------------------------------------------
@@ -28,82 +27,67 @@ extern int yycolumnEnd;
 
 // ------------------------------------------------------------------------------
 
-struct token {
-    uint type;
-    uint classification;
-    string lexeme;
-    uint line;
-    uint columnStart;
-    uint columnEnd;
-    
-    token(){};
-
-    token(uint type, uint classification, string lexeme, uint line, uint start, uint end) 
-    : type(type), classification(classification), lexeme(lexeme), line(line), columnStart(start), columnEnd(end){};
-};
-
-// ------------------------------------------------------------------------------
-
-enum class tokenClass {
-    RESERVED_WORDS = yytokentype::GENSET,
-    PRIMITIVE_TYPE = yytokentype::NUMBER,
-    META_ATTRIBUTE = yytokentype::ORDERED,
-    CLASS_STEREOTYPES = yytokentype::EVENT,
-    RELATION_STEREOTYPES = yytokentype::MATERIAL,
-    NUMBER_LITERAL = yytokentype::NUMBER_LITERAL,
-    DATA_TYPE = yytokentype::DATA_TYPE,
-    INSTANCE_NAME = yytokentype::INSTANCE_NAME,
-    NEW_TYPE = yytokentype::NEW_TYPE, 
-    CLASS_NAME = yytokentype::CLASS_NAME,
-    RELATION_NAME = yytokentype::RELATION_NAME, 
-    UNKNOWN_SYMBOL = yytokentype::UNKNOWN,
-    SPECIAL_SYMBOL = yytokentype::OPEN_BRACES, 
-    RELATION_OP = yytokentype::RELATION_KW,
-    ENUM = yytokentype::ENUM,
-    ATTR_NAME = yytokentype::ATTR_NAME
-};
-
-// ------------------------------------------------------------------------------
-
 class AnalisadorLexico
 {
 private:
-    static const map<yytokentype, string> tokenTypeNames;
-    static const map<tokenClass, string> tokenClassNames;
-
     static inline int& yyColumnStart = yycolumnStart;
     static inline int& yyColumnEnd = yycolumnEnd;
 
     yyFlexLexer lexer;
-    token currentToken;
+    symbol currentSymbol;
 
-    unordered_map<int, int> classificatedToken;
-    vector<token> unknownToken;
+    vector<symbol*> validSymbols;
+    unordered_map<SymbolCategory, int> classifiedSymbols;
+    vector<symbol*> unknownSymbols;
 
 public: 
     AnalisadorLexico();
     AnalisadorLexico(ifstream& instream, ostream& outstream);
+    ~AnalisadorLexico();
 
-    int yylex();
     void yySwitchStreams(ifstream& instream, ostream& outstream);
-
+    
+    int yylex();
     void start();
 
-    tokenClass classifyTokens(uint type);
+    SymbolCategory classifySymbols(uint type);
 
-    token CurrentToken();
-    vector<token>& UnknownToken();
-    unordered_map<int, int>& ClassificatedTokens();
+    symbol CurrentSymbol();
+    symbol SymbolAt(int index);
+    symbol* SymbolAtBack(int index);
+
+    uint yyline();
+    uint currentColumnStart();
+    uint currentColumnEnd();
+
+    unordered_map<SymbolCategory, int>& ClassifiedSymbols();
+    vector<symbol*>& UnknownSymbols();
 };
 
-inline token AnalisadorLexico::CurrentToken() {
-    return currentToken;
+inline symbol AnalisadorLexico::CurrentSymbol() {
+    return currentSymbol;
 }
 
-inline vector<token>& AnalisadorLexico::UnknownToken() {
-    return unknownToken;
+inline symbol AnalisadorLexico::SymbolAt(int index) {
+    return *validSymbols.at(index);
 }
 
-inline unordered_map<int, int>& AnalisadorLexico::ClassificatedTokens() {
-    return classificatedToken;
+inline uint AnalisadorLexico::yyline() {
+    return lexer.lineno();
+}
+
+inline uint AnalisadorLexico::currentColumnStart() {
+    return yyColumnStart;
+}
+
+inline uint AnalisadorLexico::currentColumnEnd() {
+    return yyColumnEnd;
+}
+
+inline unordered_map<SymbolCategory, int>& AnalisadorLexico::ClassifiedSymbols() {
+    return classifiedSymbols;
+}
+
+inline vector<symbol*>& AnalisadorLexico::UnknownSymbols() {
+    return unknownSymbols;
 }

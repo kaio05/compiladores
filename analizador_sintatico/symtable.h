@@ -4,39 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <iostream>
-
-// ============================================================================
-// Estrutura de Símbolo da Linguagem TONTO
-// ============================================================================
-
-enum class SymbolCategory {
-    PACKAGE,
-    CLASS,
-    DATATYPE,
-    ENUM,
-    ATTRIBUTE,
-    RELATION,
-    GENSET,
-    OTHER
-};
-
-std::string categoryToString(SymbolCategory cat);
-
-class Symbol {
-public:
-    std::string name;
-    SymbolCategory category;
-    std::string type;
-    int line;
-    int column;
-    std::string scope;
-
-    Symbol(const std::string& name, SymbolCategory cat = SymbolCategory::OTHER,
-           const std::string& type = "", int line = 0, int column = 0, const std::string& scope = "");
-    virtual ~Symbol() = default;
-
-    virtual std::string toString() const;
-};
+#include "../symbol/Symbol.h"
 
 // ============================================================================
 // Tabela de Símbolos como Tabela de Dispersão Encadeada (Escopos)
@@ -45,7 +13,7 @@ public:
 class SymTable {
 private:
     // Tabela de dispersão
-    std::unordered_map<std::string, Symbol*> table;
+    std::unordered_map<std::string, symbol*> table;
 
     // Ponteiro para a tabela do bloco/escopo mais externo
     SymTable* prev;
@@ -58,19 +26,19 @@ public:
     ~SymTable();
 
     // Insere símbolo no escopo atual
-    void put(const std::string& s, Symbol* sym);
+    void put(const std::string& s, symbol* sym);
 
     // Consulta símbolo encadeado do escopo interno para os externos
-    Symbol* get(const std::string& s);
+    symbol* get(const std::string& s);
 
     // Consulta símbolo apenas no escopo local
-    Symbol* getLocal(const std::string& s);
+    symbol* getLocal(const std::string& s);
 
     // Acessores e utilitários
     SymTable* getPrev() const { return prev; }
     const std::string& getScopeName() const { return scopeName; }
     void setScopeName(const std::string& name) { scopeName = name; }
-    const std::unordered_map<std::string, Symbol*>& getTable() const { return table; }
+    const std::unordered_map<std::string, symbol*>& getTable() const { return table; }
 
     void printTable(std::ostream& out = std::cout) const;
 };

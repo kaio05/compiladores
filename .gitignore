@@ -12,5 +12,8 @@ analizador_sintatico/parser
 compiler
 analizador_sintatico/parser.exe
 analizador_sintatico/*.o
+
+**/*.o
+
 *.exe
 

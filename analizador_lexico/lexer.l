@@ -125,6 +125,8 @@ enum                    return ENUM;
 
 "{"                     return OPEN_BRACES;
 "}"                     return CLOSE_BRACES;
+"("                     return OPEN_PARENTHESES;
+")"                     return CLOSE_PARENTHESES;
 ":"                     return COLON;
 ","                     return COMMA;
 "@"                     return AT;

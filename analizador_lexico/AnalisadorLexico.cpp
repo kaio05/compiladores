@@ -7,130 +7,34 @@ using std::cout;
 
 // ------------------------------------------------------------------------------
 
-const map<yytokentype, string> AnalisadorLexico::tokenTypeNames = {
-    { YYEMPTY, "Vazio" },
-    { YYEOF, "Fim do arquivo" },
-    { YYerror, "YYerror" },
-    { YYUNDEF, "Simbolo não definido" },
-    { GENSET, "GENSET"  },
-    { DISJOINT, "DISJOINT" },
-    { COMPLETE, "COMPLETE" },
-    { GENERAL, "GENERAL" },
-    { SPECIFICS, "SPECIFICS" },
-    { WHERE, "WHERE" },
-    { PACKAGE, "PACKAGE" },
-    { IMPORT, "IMPORT" },
-    { FUNCTIONAL_COMPLEXES, "FUNCTIONAL_COMPLEXES" },
-    { NUMBER, "NUMBER" },
-    { STRING, "STRING" },
-    { BOOLEAN, "BOOLEAN" },
-    { DATE, "DATE" },
-    { TIME, "TIME" },
-    { DATETIME, "DATETIME" },
-    { ORDERED, "ORDERED" },
-    { CONST, "CONST"   },
-    { DERIVED, "DERIVED" },
-    { SPECIALIZES, "SPECIALIZES" },
-    { SUBSETS, "SUBSETS" },
-    { REDEFINES, "REDEFINES" },
-    { EVENT, "EVENT" },
-    { SITUATION, "SITUATION" },
-    { PROCESS, "PROCESS" },
-    { CATEGORY, "CATEGORY" },
-    { MIXIN, "MIXIN" },
-    { PHASE_MIXIN, "PHASE_MIXIN" },
-    { ROLE_MIXIN, "ROLE_MIXIN" },
-    { HISTORICAL_MIXIN, "HISTORICAL_MIXIN" },
-    { HISTORICAL_ROLE, "HISTORICAL_ROLE" },
-    { HISTORICAL_ROLE_MIXIN, "HISTORICAL_ROLE_MIXIN" },
-    { KIND, "KIND" },
-    { COLLECTIVE, "COLLECTIVE" },
-    { QUANTITY, "QUANTITY" },
-    { QUALITY, "QUALITY" },
-    { MODE, "MODE" },
-    { INTRINSIC_MODES, "INTRINSIC_MODES" },
-    { EXTRINSIC_MODES, "EXTRINSIC_MODES" },
-    { SUBKIND, "SUBKIND" },
-    { PHASE, "PHASE" },
-    { ROLE, "ROLE" },
-    { RELATOR, "RELATOR" },
-    { MATERIAL, "MATERIAL" },
-    { DERIVATION, "DERIVATION" },
-    { COMPARATIVE, "COMPARATIVE" },
-    { MEDIATION, "MEDIATION" },
-    { CHARACTERIZATION, "CHARACTERIZATION" },
-    { EXTERNAL_DEPENDENCE, "EXTERNAL_DEPENDENCE" },
-    { COMPONENT_OF, "COMPONENT_OF"},
-    { MEMBER_OF, "MEMBER_OF" },
-    { SUB_COLLECTION_OF, "SUB_COLLECTION_OF" },
-    { SUB_QUALITY_OF, "SUB_QUALITY_OF" },
-    { INSTANTIATION, "INSTANTIATION" },
-    { TERMINATION, "TERMINATION" },
-    { PARTICIPATIONAL, "PARTICIPATIONAL" },
-    { PARTICIPATION, "PARTICIPATION" },
-    { HISTORICAL_DEPENDENCE, "HISTORICAL_DEPENDENCE" },
-    { CREATION, "CREATION" },
-    { MANIFESTATION, "MANIFESTATION" },
-    { BRINGS_ABOUT, "BRINGS_ABOUT" },
-    { TRIGGERS, "TRIGGERS" },
-    { COMPOSITION, "COMPOSITION" },
-    { AGGREGATION, "AGGREGATION" },
-    { INHERENCE, "INHERENCE" },
-    { VALUE, "VALUE" },
-    { FORMAL, "FORMAL" },
-    { CONSTITUTION, "CONSTITUTION" },
-    { NUMBER_LITERAL, "NUMBER_LITERAL" },
-    { DATA_TYPE, "DATA_TYPE" },
-    { INSTANCE_NAME, "INSTANCE_NAME" },
-    { NEW_TYPE, "NEW_TYPE" },
-    { CLASS_NAME, "CLASS_NAME" },
-    { RELATION_NAME, "RELATION_NAME" },
-    { UNKNOWN, "UNKNOWN" },
-    { OPEN_BRACES, "{" },
-    { CLOSE_BRACES, "}" },
-    { COLON, ":" },
-    { COMMA, "," },
-    { AT, "@" },
-    { DOT, "." },
-    { RELATION_KW, "RELATION_KW" },
-    { CARDINALITY, "CARDINALITY" },
-    { DASH, "DASH" },
-    { AGGREGATION_OP, "AGGREGATION_OP" },
-    { COMPOSITION_OP, "COMPOSITION_OP" },
-    { ENUM, "ENUM" },
-    { ATTR_NAME, "ATTR_NAME" }
-};
-
-const map<tokenClass, string> AnalisadorLexico::tokenClassNames  = {
-    { tokenClass::RESERVED_WORDS, "Palavra reservada" },
-    { tokenClass::PRIMITIVE_TYPE, "Tipo primitivo" },
-    { tokenClass::META_ATTRIBUTE, "Meta-atributo" },
-    { tokenClass::CLASS_STEREOTYPES, "Estereótipo de classe" },
-    { tokenClass::RELATION_STEREOTYPES, "Estereótipo de relação" },
-    { tokenClass::NUMBER_LITERAL, "Número" },
-    { tokenClass::NEW_TYPE, "Novo tipo" },
-    { tokenClass::INSTANCE_NAME, "Instância" },
-    { tokenClass::CLASS_NAME, "Classe" },
-    { tokenClass::RELATION_NAME, "Relação" },
-    { tokenClass::UNKNOWN_SYMBOL, "Símbolo desconhecido" },
-    { tokenClass::SPECIAL_SYMBOL, "Símbolo especial" },
-    { tokenClass::RELATION_OP, "Operação de relação" },
-    { tokenClass::ENUM, "Enumerador" },
-    { tokenClass::ATTR_NAME, "Nome de atributo" }
-};
-
-// ------------------------------------------------------------------------------
-
-AnalisadorLexico::AnalisadorLexico()
-{
-
-}
+AnalisadorLexico::AnalisadorLexico() {}
 
 // ------------------------------------------------------------------------------
 
 AnalisadorLexico::AnalisadorLexico(ifstream& instream, ostream& outstream)
 {
     lexer.switch_streams(instream, outstream);
+}
+
+// ------------------------------------------------------------------------------
+
+AnalisadorLexico::~AnalisadorLexico()
+{
+    if (!validSymbols.empty()) {
+        for (auto symb : validSymbols) {
+            delete symb;
+        }
+
+        validSymbols.clear();
+    }
+
+    if (!unknownSymbols.empty()) {
+        for (auto symb : unknownSymbols) {
+            delete symb;
+        }
+
+        unknownSymbols.clear();
+    }
 }
 
 // ------------------------------------------------------------------------------
@@ -143,21 +47,23 @@ int AnalisadorLexico::yylex()
         return readToken;
     }
 
-    uint classifytoken = (uint)classifyTokens(readToken);
+    SymbolCategory symbolClass = classifySymbols(readToken);
 
-    currentToken = token(
-        readToken, 
-        classifytoken, 
+    currentSymbol = symbol(
+        static_cast<yytokentype>(readToken),
+        symbolClass,
         lexer.YYText(),
         lexer.lineno(),
         yyColumnStart,
         yyColumnEnd
     );
 
-    classificatedToken[classifytoken]++;
+    classifiedSymbols[symbolClass]++;
 
     if (readToken == UNKNOWN) {
-        unknownToken.push_back(currentToken);
+        unknownSymbols.push_back(new symbol(currentSymbol));
+    } else {
+        validSymbols.push_back(new symbol(currentSymbol));
     }
 
     return readToken;
@@ -168,6 +74,24 @@ int AnalisadorLexico::yylex()
 void AnalisadorLexico::yySwitchStreams(ifstream& instream, ostream& outstream)
 {
     lexer.switch_streams(instream, outstream);
+
+    if (!validSymbols.empty()) {
+        for (auto symb : validSymbols) {
+            delete symb;
+        }
+        validSymbols.clear();
+    }
+
+    if (!classifiedSymbols.empty()) {
+        classifiedSymbols.clear();
+    }
+
+    if (!unknownSymbols.empty()) {
+        for (auto symb : unknownSymbols) {
+            delete symb;
+        }
+        unknownSymbols.clear();
+    }
 }
 
 // ------------------------------------------------------------------------------
@@ -176,14 +100,12 @@ void AnalisadorLexico::start()
 {
     cout << "===============\n" << "Visão analítica\n" << "===============\n";
 
-    int readToken;
-
-    while(readToken = this->yylex() > 0) {
+    while(this->yylex() > 0) {
         cout << "<Token: " 
-             << tokenTypeNames.at(static_cast<yytokentype>(currentToken.type)) << ", " 
-             << tokenClassNames.at(static_cast<tokenClass>(currentToken.classification)) << ", \""
-             << currentToken.lexeme << "\"" 
-             << ", line: " << currentToken.line
+             << SymbolTypeToString(currentSymbol.type) << ", " 
+             << SymbolCategoryToString(currentSymbol.category) << ", " 
+             << "\"" << currentSymbol.name << "\"" 
+             << ", line: " << currentSymbol.line
              << ", column start:" << yycolumnStart 
              << ", column end: " << yycolumnEnd
              << ">\n";
@@ -194,21 +116,20 @@ void AnalisadorLexico::start()
 
     cout << "=================\n" << "Tabela de síntese\n" << "=================\n";
 
-	for(auto pair: classificatedToken) {
-		tokenClass tc = (tokenClass)pair.first;
-		cout << tokenClassNames.at(tc) << ": "<< pair.second << "\n";
+	for(auto pair: classifiedSymbols) {
+		cout << SymbolCategoryToString(pair.first) << ": "<< pair.second << "\n";
 	}
 
-	if (!unknownToken.empty()) {
+	if (!unknownSymbols.empty()) {
 		cout << "\n\n";
 		cout << "====================\n" << "Tokens desconhecidos\n" << "====================\n";
 
-		for (auto token : unknownToken) {
+		for (auto token : unknownSymbols) {
             cout << "Caractere: \"" 
-            << token.lexeme << "\" desconhecido." 
-            << " Linha: " << token.line 
-            << ". Colunas: " << token.columnStart
-            << " a " << token.columnEnd << "."
+            << token->name << "\" desconhecido." 
+            << " Linha: " << token->line 
+            << ". Colunas: " << token->columnStart
+            << " a " << token->columnEnd << "."
             << "\n";
 		}
 	}
@@ -216,31 +137,47 @@ void AnalisadorLexico::start()
 
 // ------------------------------------------------------------------------------
 
-tokenClass AnalisadorLexico::classifyTokens(uint type)
+symbol* AnalisadorLexico::SymbolAtBack(int index) 
 {
-    if (type >= (uint)tokenClass::RESERVED_WORDS && type < (uint)tokenClass::PRIMITIVE_TYPE) {
-        return tokenClass::RESERVED_WORDS; 
-    } 
-    else if (type >= (uint)tokenClass::PRIMITIVE_TYPE && type < (uint)tokenClass::META_ATTRIBUTE) {
-        return tokenClass::PRIMITIVE_TYPE;
-    } 
-    else if (type >= (uint)tokenClass::META_ATTRIBUTE && type < (uint)tokenClass::CLASS_STEREOTYPES) {
-        return tokenClass::META_ATTRIBUTE;
-    }
-    else if (type >= (uint)tokenClass::CLASS_STEREOTYPES && type < (uint)tokenClass::RELATION_STEREOTYPES) {
-        return tokenClass::CLASS_STEREOTYPES;
-    }
-    else if (type >= (uint)tokenClass::RELATION_STEREOTYPES && type < (uint)tokenClass::NUMBER_LITERAL) {
-        return tokenClass::RELATION_STEREOTYPES;
-    } 
-    else if (type >= (uint)tokenClass::SPECIAL_SYMBOL && type < (uint)tokenClass::RELATION_OP) {
-        return tokenClass::SPECIAL_SYMBOL;
-    }
-    else if (type >= (uint)tokenClass::RELATION_OP && type < (uint)tokenClass::ENUM) {
-        return tokenClass::RELATION_OP;
+    if (validSymbols.empty()) {
+        return nullptr;
     }
 
-    return static_cast<tokenClass>(type);
+    auto endIterator = validSymbols.end();
+    endIterator--;
+
+    for (int i = 0; i < index; i++) {
+        endIterator--;
+    }
+
+    return *endIterator;
 }
 
 // ------------------------------------------------------------------------------
+
+SymbolCategory AnalisadorLexico::classifySymbols(uint type)
+{
+    if (type >= (uint)SymbolCategory::RESERVED_WORDS && type < (uint)SymbolCategory::PRIMITIVE_TYPE) {
+        return SymbolCategory::RESERVED_WORDS; 
+    } 
+    else if (type >= (uint)SymbolCategory::PRIMITIVE_TYPE && type < (uint)SymbolCategory::META_ATTRIBUTE) {
+        return SymbolCategory::PRIMITIVE_TYPE;
+    } 
+    else if (type >= (uint)SymbolCategory::META_ATTRIBUTE && type < (uint)SymbolCategory::CLASS_STEREOTYPES) {
+        return SymbolCategory::META_ATTRIBUTE;
+    }
+    else if (type >= (uint)SymbolCategory::CLASS_STEREOTYPES && type < (uint)SymbolCategory::RELATION_STEREOTYPES) {
+        return SymbolCategory::CLASS_STEREOTYPES;
+    }
+    else if (type >= (uint)SymbolCategory::RELATION_STEREOTYPES && type < (uint)SymbolCategory::NUMBER_LITERAL) {
+        return SymbolCategory::RELATION_STEREOTYPES;
+    } 
+    else if (type >= (uint)SymbolCategory::SPECIAL_SYMBOL && type < (uint)SymbolCategory::RELATION_OP) {
+        return SymbolCategory::SPECIAL_SYMBOL;
+    }
+    else if (type >= (uint)SymbolCategory::RELATION_OP && type < (uint)SymbolCategory::ENUM) {
+        return SymbolCategory::RELATION_OP;
+    }
+
+    return static_cast<SymbolCategory>(type);
+}
