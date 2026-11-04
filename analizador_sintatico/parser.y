@@ -366,7 +366,9 @@ attribute:
 ;
 
 attr_name:
-    INSTANCE_NAME   { $$ = $1; }
+    RELATION_NAME  { $$ = $1; }
+    | INSTANCE_NAME   { $$ = $1; }
+    | CLASS_NAME  { $$ = $1; }
 ;
 
 data_type:
@@ -436,6 +438,8 @@ data_type_decl:
 
 datatype_name:
     NEW_TYPE      { $$ = $1; }
+    | CLASS_NAME  { $$ = $1; }
+    | RELATION_NAME { $$ = $1; }
 ;
 
 opt_datatype_attributes:
@@ -759,7 +763,6 @@ external_rel:
 
         cout << "Declaração de relação externa: " << relName << ", linha: " << className->line << "\n";
 
-        if ($1 != nullptr) free($1);
         destroyPartialSymbol(className);
         delete relationC;
     }
@@ -767,6 +770,7 @@ external_rel:
 
 domain_class:
     CLASS_NAME { $$ = $1; }
+    | RELATION_NAME { $$ = $1; }
 ;
 
 rel_connector:
@@ -786,6 +790,7 @@ rel_connector:
 
 rel_ident:
     RELATION_NAME { $$ = $1; }
+    | CLASS_NAME  { $$ = $1; }
 ;
 
 opt_rel_alias:
@@ -841,8 +846,8 @@ relation_type:
 
 int main(int argc, char ** argv)
 {
-    if (argc <= 1 || argc > 2) {
-        cerr << "Para usar o parser utilize o comando: ./parser <arquivo.tonto>\n";
+    if (argc <= 1 || argc > 3) {
+        cerr << "Para usar o parser utilize o comando: ./parser <arquivo.tonto> opcionalmente com a flag: -flex\n";
     }
 
     /* se foi passado um nome de arquivo */
@@ -853,41 +858,51 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    AnalisadorLexicoSintatico->yySwitchStreams(file, cout);
+    if (argc == 3 && string(argv[2]) == "-flex") {
+        
+        AnalisadorLexico lex(file, cout);
+        lex.start();
+        return 0;
 
-    cout << "\n=======================================================\n";
-    cout << "Análise do parser\n";
-    cout << "=======================================================\n";
+    } else if (argc == 2) {
 
-    int parseResult = yyparse();
+        AnalisadorLexicoSintatico->yySwitchStreams(file, cout);
 
-    delete AnalisadorLexicoSintatico;
-
-    if (parseResult == 0)
-    {
         cout << "\n=======================================================\n";
-        cout << "TABELAS DE SÍMBOLOS GERADAS (POR ESCOPO)\n";
+        cout << "Análise do parser\n";
         cout << "=======================================================\n";
-        for (SymTable* table : allScopes)
+
+        int parseResult = yyparse();
+
+        delete AnalisadorLexicoSintatico;
+
+        if (parseResult == 0)
         {
-            if (!table->getTable().empty())
+            cout << "\n=======================================================\n";
+            cout << "TABELAS DE SÍMBOLOS GERADAS (POR ESCOPO)\n";
+            cout << "=======================================================\n";
+            for (SymTable* table : allScopes)
             {
-                table->printTable(cout);
-                cout << "\n";
+                if (!table->getTable().empty())
+                {
+                    table->printTable(cout);
+                    cout << "\n";
+                }
             }
         }
-    }
 
-    // Liberação de memória dos escopos
-    for (SymTable* table : allScopes)
-    {
-        delete table;
-    }
-    allScopes.clear();
-    
-    gerar_relatorio();
+        // Liberação de memória dos escopos
+        for (SymTable* table : allScopes)
+        {
+            delete table;
+        }
+        allScopes.clear();
+        
+        gerar_relatorio();
 
-    return parseResult;
+        return parseResult;
+
+    }
 }
 
 int yylex() {
