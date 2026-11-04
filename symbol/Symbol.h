@@ -35,7 +35,7 @@ enum class SymbolCategory {
 
 struct symbol {
     yytokentype type;
-    SymbolCategory category;
+    string category;
     string name;
     uint line;
     uint columnStart;
@@ -46,7 +46,7 @@ struct symbol {
 
     symbol(
         yytokentype type, 
-        SymbolCategory cat, 
+        string cat, 
         string name, 
         uint line, 
         uint start,

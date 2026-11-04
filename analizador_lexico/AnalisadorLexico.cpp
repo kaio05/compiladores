@@ -51,7 +51,7 @@ int AnalisadorLexico::yylex()
 
     currentSymbol = symbol(
         static_cast<yytokentype>(readToken),
-        symbolClass,
+        SymbolCategoryToString(symbolClass),
         lexer.YYText(),
         lexer.lineno(),
         yyColumnStart,
@@ -103,7 +103,7 @@ void AnalisadorLexico::start()
     while(this->yylex() > 0) {
         cout << "<Token: " 
              << SymbolTypeToString(currentSymbol.type) << ", " 
-             << SymbolCategoryToString(currentSymbol.category) << ", " 
+             << currentSymbol.category << ", " 
              << "\"" << currentSymbol.name << "\"" 
              << ", line: " << currentSymbol.line
              << ", column start:" << yycolumnStart 

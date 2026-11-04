@@ -35,7 +35,7 @@ newType             ({letter})+("DataType")
 className           [A-Z]({letter}|_)*
 relationName        [a-z]({letter}|_)*
 cardinality         \[([0-9]+|\*|[0-9]+\.\.([0-9]+|\*))\]
-/* symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",") */
+/* symbol            ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",") */
 
 %%
 {ws}                    {/* nenhuma ação e nenhum retorno */}
@@ -117,11 +117,11 @@ specializes             return SPECIALIZES;
 datatype                return DATA_TYPE;
 enum                    return ENUM;
 
-{number}                { yylval.str = strdup(yytext); return NUMBER_LITERAL; }
-{instanceName}          { yylval.str = strdup(yytext); return INSTANCE_NAME; }
-{newType}               { yylval.str = strdup(yytext); return NEW_TYPE; }
-{className}             { yylval.str = strdup(yytext); return CLASS_NAME; }
-{relationName}          { yylval.str = strdup(yytext); return RELATION_NAME; }
+{number}                { yylval.symb = new partialSymbol(NUMBER_LITERAL, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NUMBER_LITERAL; }
+{instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
+{newType}               { yylval.symb = new partialSymbol(NEW_TYPE, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NEW_TYPE; }
+{className}             { yylval.symb = new partialSymbol(CLASS_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CLASS_NAME; }
+{relationName}          { yylval.symb = new partialSymbol(RELATION_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return RELATION_NAME; }
 
 "{"                     return OPEN_BRACES;
 "}"                     return CLOSE_BRACES;
@@ -131,7 +131,7 @@ enum                    return ENUM;
 ","                     return COMMA;
 "@"                     return AT;
 "."                     return DOT;
-{cardinality}           return CARDINALITY;
+{cardinality}           { yylval.symb = new partialSymbol(CARDINALITY, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CARDINALITY; }
 "<>--"                  return AGGREGATION_OP;
 "<o>--"                 return COMPOSITION_OP;
 "--"                    return DASH;

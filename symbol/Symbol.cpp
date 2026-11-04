@@ -7,8 +7,9 @@ string symbol::toString() const
 {
     std::ostringstream ss;
     
-    ss << "[" << SymbolCategoryToString(category) << "] " << name
-    << " (line: " << line << ", column: " << columnStart << " a " << columnEnd << ")";
+    ss << "[Categoria: " << category
+    << ", Tipo: " << SymbolTypeToString(type) << "] " << name
+    << " (linha: " << line << ", coluna: " << columnStart << " a " << columnEnd << ")";
 
     return ss.str();
 }
@@ -115,7 +116,7 @@ string SymbolTypeToString(yytokentype token)
         case AT: return "@";
         case DOT: return ".";
 
-        case RELATION_KW: return "RELATION_KW";
+        case RELATION_KW: return "RELATION";
         case CARDINALITY: return "CARDINALITY";
         case DASH: return "DASH";
         case AGGREGATION_OP: return "AGGREGATION_OP";

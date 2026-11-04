@@ -1,16 +1,33 @@
+%code requires{
+    #include <string>
+    #include <vector>
+
+    using namespace std;
+
+    struct partialSymbol {
+        int type;
+        char* str;
+        int line;
+        int start;
+        int end;
+    };
+
+    struct relationalConectors {
+        int left;
+        partialSymbol* middle;
+        int right;
+    };
+}
+
 %{
 #include <fstream>
 #include <iostream>
-#include <string>
-#include <vector>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include "symtable.h"
 #include "relatorio.h"
 #include "../analizador_lexico/AnalisadorLexico.h"
-
-using namespace std;
 
 int yylex();
 int yyparse();
@@ -33,6 +50,13 @@ void exitScope() {
     }
 }
 
+void destroyPartialSymbol(partialSymbol* sym) {
+    if (sym != nullptr) {
+        free(sym->str);
+        delete sym;
+    }
+};
+
 TipoErro contextoAtual = TipoErro::GENERICO;
 %}
 
@@ -41,7 +65,11 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 %locations
 
 %union {
+    partialSymbol* symb;
     char* str;
+    vector<string>* gensetMods;
+    relationalConectors* connectors;
+    int integer;
 }
 
 /* Tokens das palavras reservadas e dos estereótipos. */
@@ -64,18 +92,32 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 %token INSTANTIATION TERMINATION PARTICIPATIONAL PARTICIPATION
 %token HISTORICAL_DEPENDENCE CREATION MANIFESTATION
 %token BRINGS_ABOUT TRIGGERS COMPOSITION AGGREGATION
-%token INHERENCE VALUE FORMAL CONSTITUTION
+%token INHERENCE VALUE FORMAL CONSTITUTION 
 
-%token <str> NUMBER_LITERAL SPECIAL_SYMBOL DATA_TYPE
-%token <str> INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME ATTR_NAME UNKNOWN
+%token <symb> NUMBER_LITERAL 
+%token SPECIAL_SYMBOL DATA_TYPE
+%token <symb> INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME ATTR_NAME 
+
+%token UNKNOWN
 
 %token OPEN_BRACES CLOSE_BRACES OPEN_PARENTHESES CLOSE_PARENTHESES COLON COMMA AT DOT
 
-%token RELATION_KW <str> CARDINALITY DASH AGGREGATION_OP COMPOSITION_OP
+%token RELATION_KW 
+%token <symb> CARDINALITY 
+%token DASH AGGREGATION_OP COMPOSITION_OP
 %token ENUM SPECIALIZES
 
-%type <str> identifier package_name datatype_name genset_name enum_member attr_name
-%type <str> data_type class_stereotype relation_type opt_at_stereotype rel_connector rel_ident domain_class
+%type <str> class_stereotype relation_type opt_at_stereotype genset_modifier data_type 
+
+%type <integer> relation_operator
+
+%type <connectors> rel_connector 
+
+%type <gensetMods> genset_modifiers opt_inner_genset_modifiers
+
+%type <symb> datatype_name identifier package_name genset_name enum_member attr_name opt_cardinality
+%type <symb> domain_class rel_ident opt_rel_alias
+
 
 %start program
 
@@ -112,25 +154,25 @@ import_path:
 
 package_decl:
     PACKAGE package_name {
-        string pkgName = $2;
-        currentScope->setScopeName("package " + pkgName);
+        partialSymbol* pkgName = $2;
+        string name = pkgName->str;
 
-        symbol* smb = AnalisadorLexicoSintatico->SymbolAtBack(0);
-        smb->scope = currentScope->getScopeName();
-
-        currentScope->put("package " + pkgName, new symbol(
-            smb->type,
-            smb->category,
-            smb->name,
-            smb->line,
-            smb->columnStart,
-            smb->columnEnd,
-            smb->scope
+        currentScope->setScopeName("package " + name);
+        currentScope->put("package " + name, new symbol(
+            (yytokentype)pkgName->type,
+            "package",
+            pkgName->str,
+            pkgName->line,
+            pkgName->start,
+            pkgName->end,
+            currentScope->getScopeName()
         ));
-        cout << "Declaração de pacote: " << pkgName << "\n";
+
+        cout << "Declaração de pacote: " << pkgName->str << ", linha: " << pkgName->line << "\n";
+
         contextoAtual = TipoErro::PACOTE;
 
-        free($2);
+        destroyPartialSymbol(pkgName);
     }
 ;
 
@@ -155,11 +197,11 @@ declarations:
 ;
 
 declaration:
-    class_decl            { cout << "Declaração de classe\n"; contextoAtual = TipoErro::CLASSE; }
-    | data_type_decl      { cout << "Declaração de tipo de dados\n"; contextoAtual = TipoErro::DATA_TYPE; }
-    | enum_decl           { cout << "Declaração de enum\n"; contextoAtual = TipoErro::ENUM; }
-    | generalization_decl { cout << "Declaração de generalização\n"; contextoAtual = TipoErro::GENSET; }
-    | external_rel        { cout << "Declaração de relação externa\n"; contextoAtual = TipoErro::RELACAO; }
+    class_decl            { contextoAtual = TipoErro::CLASSE; }
+    | data_type_decl      { contextoAtual = TipoErro::DATA_TYPE; }
+    | enum_decl           { contextoAtual = TipoErro::ENUM; }
+    | generalization_decl { contextoAtual = TipoErro::GENSET; }
+    | external_rel        { contextoAtual = TipoErro::RELACAO; }
 ;
 
 /* 2. Declaração de Classes */
@@ -172,33 +214,33 @@ class_decl:
 
 class_header:
     class_stereotype CLASS_NAME opt_meta_stereotype opt_specializes {
-        string className = $2;
+        partialSymbol* className = $2;
         string stereotype = ($1 ? $1 : "");
 
-        symbol* existing = currentScope->getLocal(className);
-        if (existing != nullptr && existing->category == SymbolCategory::CLASS_NAME) {
+        symbol* existing = currentScope->getLocal(className->str);
+        if (existing != nullptr && existing->name == className->str) {
             cerr << "Erro semântico [Linha " << existing->line << ", " 
                  << " Coluna " << existing->columnStart << " a " << existing->columnEnd
                  << "]: Classe '" << className << "' já declarada no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            symbol* classStereotype = AnalisadorLexicoSintatico->SymbolAtBack(3);
-            symbol* nameClass = AnalisadorLexicoSintatico->SymbolAtBack(2);
 
-            currentScope->put(className, new symbol(
-                classStereotype->type, 
-                classStereotype->category, 
-                className, 
-                nameClass->line,
-                nameClass->columnStart,
-                nameClass->columnEnd, 
+            currentScope->put(string(className->str), new symbol(
+                (yytokentype)className->type, 
+                "Class", 
+                className->str, 
+                className->line,
+                className->start,
+                className->end, 
                 currentScope->getScopeName()
             ));
+
+            cout << "Declaração de classe: " << className->str << ", linha: " << className->line << "\n";
         }
-        enterScope(className);
 
-        free($2);
+        enterScope(className->str);
 
+        destroyPartialSymbol(className);
     }
 ;
 
@@ -229,7 +271,7 @@ class_elements:
 
 class_element:
     attribute
-    | internal_rel { cout << "Declaração de relação interna\n"; }
+    | internal_rel { contextoAtual = TipoErro::RELACAO; }
 ;
 
 opt_specializes:
@@ -239,25 +281,25 @@ opt_specializes:
 
 class_list:
     CLASS_NAME {
-        string baseClass = $1;
-        if (currentScope->get(baseClass) == nullptr) {
+        partialSymbol* baseClass = $1;
+        if (currentScope->get(string(baseClass->str)) == nullptr) {
             cerr << "Aviso semântico " 
-                 << " [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
-                 << "]: Classe base '" << baseClass << "' referenciada ainda não foi encontrada no escopo.\n";
+                 << " [Linha " << baseClass->line 
+                 << ", Coluna " << baseClass->start << " a " << baseClass->end
+                 << "]: Classe base '" << baseClass->str << "' referenciada ainda não foi encontrada no escopo.\n";
         }
 
-        free($1);
+        destroyPartialSymbol(baseClass);
     }
     | class_list COMMA CLASS_NAME {
-        string baseClass = $3;
-        if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
-                 << "]: Classe base '" << baseClass << "' referenciada ainda não foi encontrada no escopo.\n";
+        partialSymbol* baseClass = $3;
+        if (currentScope->get(string(baseClass->str)) == nullptr) {
+            cerr << "Aviso semântico [Linha " << baseClass->line 
+                 << ", Coluna " << baseClass->start << " a " << baseClass->end
+                 << "]: Classe base '" << baseClass->str << "' referenciada ainda não foi encontrada no escopo.\n";
         }
 
-        free($3);
+        destroyPartialSymbol(baseClass);
     }
 ;
 
@@ -290,38 +332,37 @@ class_stereotype:
 attribute:
     attr_name COLON data_type opt_attribute_modifiers {
         contextoAtual = TipoErro::ATRIBUTO;
-        string attrName = $1;
+
+        partialSymbol* attrName = $1;
         string typeName = ($3 ? $3 : "");
 
-        if (currentScope->getLocal(attrName) != nullptr) {
-            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
-                 << "]: Atributo '" << attrName << "' duplicado no escopo " 
+        if (currentScope->getLocal(string(attrName->str)) != nullptr) {
+            cerr << "Erro semântico [Linha " << attrName->line 
+                 << ", Coluna " << attrName->start << " a " << attrName->end
+                 << "]: Atributo '" << attrName->str << "' duplicado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            symbol* atribute = AnalisadorLexicoSintatico->SymbolAtBack(3);
-            symbol* typeData = AnalisadorLexicoSintatico->SymbolAtBack(1);
 
-            currentScope->put(attrName, new symbol(
-                typeData->type, 
-                typeData->category, 
-                atribute->name, 
-                atribute->line, 
-                atribute->columnStart,
-                atribute->columnEnd, 
+            currentScope->put(string(attrName->str), new symbol(
+                (yytokentype)attrName->type, 
+                "Attribute", 
+                typeName, 
+                attrName->line, 
+                attrName->start,
+                attrName->end, 
                 currentScope->getScopeName()
             ));
+
+            cout << "Declaração de atributo: " << attrName->str << ", linha: " << attrName->line << "\n";
         }
 
-        free($1);
         free($3);
+        destroyPartialSymbol(attrName);
     }
 ;
 
 attr_name:
-    RELATION_NAME { $$ = $1; }
-    | ATTR_NAME   { $$ = $1; }
-    | CLASS_NAME  { $$ = $1; }
+    INSTANCE_NAME   { $$ = $1; }
 ;
 
 data_type:
@@ -331,14 +372,12 @@ data_type:
   | DATE          { $$ = strdup("date"); }
   | TIME          { $$ = strdup("time"); }
   | DATETIME      { $$ = strdup("datetime"); }
-  | CLASS_NAME    { $$ = $1; }
-  | NEW_TYPE      { $$ = $1; }
-  | RELATION_NAME { $$ = $1; }
+  | NEW_TYPE      { $$ = strdup($1->str); destroyPartialSymbol($1); }
 ;
 
 opt_attribute_modifiers:
-    %empty
-    | opt_attribute_modifiers OPEN_BRACES modifier_list CLOSE_BRACES
+    %empty 
+    | opt_attribute_modifiers OPEN_BRACES modifier_list CLOSE_BRACES 
 ;
 
 modifier_list:
@@ -357,30 +396,31 @@ modifier_item:
 /* 4. Tipos de Dados Complexos (Datatype) */
 
 data_type_decl:
-    DATA_TYPE datatype_name {
-        string dtName = $2;
-        if (currentScope->getLocal(dtName) != nullptr) {
-            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() 
-                 << "]: Tipo de dados '" << dtName << "' já declarado no escopo " 
+     DATA_TYPE datatype_name {
+        partialSymbol* dtName = $2;
+
+        if (currentScope->getLocal(string(dtName->str)) != nullptr) {
+            cerr << "Erro semântico [Linha " << dtName->line 
+                 << ", Coluna " << dtName->start << " a " << dtName->end
+                 << "]: Tipo de dados '" << dtName->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            symbol* newType = AnalisadorLexicoSintatico->SymbolAtBack(0);
-
-            currentScope->put(dtName, new symbol(
-                yytokentype::DATA_TYPE, 
-                SymbolCategory::DATA_TYPE, 
-                dtName, 
-                newType->line, 
-                newType->columnStart,
-                newType->columnEnd, 
+            currentScope->put(string(dtName->str), new symbol(
+                (yytokentype)dtName->type, 
+                "Data type", 
+                dtName->str, 
+                dtName->line, 
+                dtName->start,
+                dtName->end, 
                 currentScope->getScopeName()
             ));
+
+            cout << "Declaração de tipo: " << dtName->str << ", linha: " << dtName->line << "\n";
         }
 
-        enterScope(dtName);
+        enterScope(dtName->str);
+        destroyPartialSymbol(dtName);
 
-        free($2);
     } OPEN_BRACES opt_datatype_attributes CLOSE_BRACES {
         exitScope();
     }
@@ -388,41 +428,43 @@ data_type_decl:
 
 datatype_name:
     NEW_TYPE      { $$ = $1; }
-    | CLASS_NAME  { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
 ;
 
 opt_datatype_attributes:
-    %empty
-    | opt_datatype_attributes attribute
+    %empty 
+    | opt_datatype_attributes attribute opt_attribute_modifiers
 ;
 
 /* 5. Classes Enumeradas (Enum) */
 
 enum_decl:
     ENUM CLASS_NAME {
-        string enumName = $2;
-        if (currentScope->getLocal(enumName) != nullptr) {
-            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() << " a " << AnalisadorLexicoSintatico->currentColumnEnd()
-                 << "]: Enum '" << enumName << "' já declarado no escopo " 
+        partialSymbol* enumName = $2;
+
+        if (currentScope->getLocal(enumName->str) != nullptr) {
+            cerr << "Erro semântico [Linha " << enumName->line 
+                 << ", Coluna " << enumName->start << " a " << enumName->end
+                 << "]: Enum '" << enumName->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            symbol* newEnum = AnalisadorLexicoSintatico->SymbolAtBack(0);
-            currentScope->put(enumName, new symbol(
-                yytokentype::ENUM,
-                SymbolCategory::ENUM, 
-                enumName, 
-                newEnum->line, 
-                newEnum->columnStart, 
-                newEnum->columnEnd, 
+            currentScope->put(enumName->str, new symbol(
+                (yytokentype)enumName->type,
+                "Enum", 
+                enumName->str, 
+                enumName->line, 
+                enumName->start, 
+                enumName->end, 
                 currentScope->getScopeName()
             ));
+
+            cout << "Declaração de Enum: " << enumName->str << ", linha: " << enumName->line << "\n";
         }
 
-        enterScope(enumName);
 
-        free($2);
+        enterScope(enumName->str);
+
+        destroyPartialSymbol(enumName);
+        
     } OPEN_BRACES enum_members CLOSE_BRACES {
         exitScope();
     }
@@ -430,98 +472,127 @@ enum_decl:
 
 enum_members:
     enum_member {
-        string mem = $1;
-        symbol* newEnumMember = AnalisadorLexicoSintatico->SymbolAtBack(0);
-        currentScope->put(mem, new symbol(
-            yytokentype::CLASS_NAME,
-            SymbolCategory::ENUM, 
-            mem, 
-            newEnumMember->line, 
-            newEnumMember->columnStart, 
-            newEnumMember->columnEnd,
+        partialSymbol* member = $1;
+
+        currentScope->put(member->str, new symbol(
+            (yytokentype)member->type,
+            "Enum_member", 
+            member->str, 
+            member->line, 
+            member->start, 
+            member->end,
             currentScope->getScopeName()
         ));
 
-        free($1);
+        cout << "Membro do Enum: " << currentScope->getScopeName() << "[" << member->str << "], linha: " << member->line << "\n";
+
+        destroyPartialSymbol(member);
     }
     | enum_members COMMA enum_member {
-        string mem = $3;
-        symbol* newEnumMember = AnalisadorLexicoSintatico->SymbolAtBack(0);
-        currentScope->put(mem, new symbol(
-            yytokentype::CLASS_NAME,
-            SymbolCategory::ENUM, 
-            mem, 
-            newEnumMember->line, 
-            newEnumMember->columnStart, 
-            newEnumMember->columnEnd,
+        partialSymbol* member = $3;
+
+        currentScope->put(member->str, new symbol(
+            (yytokentype)member->type,
+            "Enum_member", 
+            member->str, 
+            member->line, 
+            member->start, 
+            member->end,
             currentScope->getScopeName()
         ));
 
-        free($3);
+        cout << "Membro do Enum: " << currentScope->getScopeName() << "[" << member->str << "], linha: " << member->line << "\n";
+
+        destroyPartialSymbol(member);
     }
 ;
 
 enum_member:
     CLASS_NAME     { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
-    | INSTANCE_NAME { $$ = $1; }
-    | NUMBER_LITERAL { $$ = $1; }
+    /* Somente nome de classes */
 ;
 
 /* 6. Conjuntos de Generalizações (Genset) */
 
 generalization_decl:
     genset_modifiers GENSET genset_name WHERE class_list SPECIALIZES CLASS_NAME {
-        string gname = $3;
-        if (currentScope->getLocal(gname) != nullptr) {
-            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() << " a " << AnalisadorLexicoSintatico->currentColumnEnd() 
-                 << "]: Genset '" << gname << "' já declarado no escopo " 
+        vector<string>* gensetMods = $1;
+
+        string mods = "";
+        if (!gensetMods->empty()){
+            for (auto& mod : *gensetMods){
+                mods += mod + " ";
+            }
+        } else {
+            mods = "genset";
+        }
+
+        partialSymbol* gname = $3;
+        partialSymbol* baseClass = $7;
+
+        if (currentScope->getLocal(gname->str) != nullptr) {
+            cerr << "Erro semântico [Linha " << gname->line 
+                 << ", Coluna " << gname->start << " a " << gname->end
+                 << "]: Genset '" << gname->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            symbol* newGen = AnalisadorLexicoSintatico->SymbolAtBack(4);
-            currentScope->put(gname, new symbol(
-                yytokentype::GENSET,
-                SymbolCategory::RESERVED_WORDS, 
-                gname, 
-                newGen->line, 
-                newGen->columnStart,
-                newGen->columnEnd, 
+            currentScope->put(gname->str, new symbol(
+                (yytokentype)gname->type,
+                mods, 
+                gname->str, 
+                gname->line, 
+                gname->start,
+                gname->end, 
                 currentScope->getScopeName()
             ));
+
+            cout << "Declaração de genset: " << gname->str << ", linha: " << gname->line << "\n";
         }
 
-        string baseClass = $7;
-        if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline()
-                 << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
+        if (currentScope->get(baseClass->str) == nullptr) {
+            cerr << "Aviso semântico [Linha " << baseClass->line
+                 << "]: Classe geral '" << baseClass->str << "' do genset ainda não declarada.\n";
         }
 
-        free($3);
-        free($7);
+        destroyPartialSymbol(gname);
+        destroyPartialSymbol(baseClass);
     }
     | genset_modifiers GENSET genset_name OPEN_BRACES genset_body CLOSE_BRACES {
-        string gname = $3;
-        if (currentScope->getLocal(gname) != nullptr) {
-            cerr << "Erro semântico [Linha " << AnalisadorLexicoSintatico->yyline()
-                 << ", Coluna " << AnalisadorLexicoSintatico->currentColumnStart() << " a " << AnalisadorLexicoSintatico->currentColumnEnd() 
-                 << "]: Genset '" << gname << "' já declarado no escopo " 
-                 << currentScope->getScopeName() << ".\n";
+        vector<string>* gensetMods = $1;
+
+        string mods = "";
+        if (!gensetMods->empty()){
+            for (auto& mod : *gensetMods){
+                mods += mod + " ";
+            }
         } else {
-            symbol* genType = AnalisadorLexicoSintatico->SymbolAtBack(5);
-            symbol* newGen = AnalisadorLexicoSintatico->SymbolAtBack(3);
-            currentScope->put(gname, new symbol(
-                genType->type, 
-                SymbolCategory::RESERVED_WORDS, 
-                gname, 
-                newGen->line, 
-                newGen->columnStart,
-                newGen->columnEnd, 
-                currentScope->getScopeName()
-            ));
+            mods = "genset";
         }
 
-        free($3);
+        partialSymbol* genName = $3;
+
+        if (currentScope->getLocal(genName->str) != nullptr) {
+            cerr << "Erro semântico [Linha " << genName->line
+                 << ", Coluna " << genName->start
+                 << " a " << genName->end 
+                 << "]: Genset '" << genName->str << "' já declarado no escopo " 
+                 << currentScope->getScopeName() << ".\n";
+        } else {
+            currentScope->put(genName->str, new symbol(
+                (yytokentype)genName->type, 
+                mods, 
+                genName->str, 
+                genName->line, 
+                genName->start,
+                genName->end, 
+                currentScope->getScopeName()
+            ));
+
+            cout << "Declaração de genset: " << genName->str << ", linha: " << genName->line << "\n";
+        }
+
+        destroyPartialSymbol(genName);
+        delete gensetMods;
     }
 ;
 
@@ -531,41 +602,56 @@ genset_name:
 ;
 
 genset_modifiers:
-    %empty
-    | genset_modifiers genset_modifier
+    %empty { 
+        $$ = new vector<string>(); 
+    }
+    | genset_modifiers genset_modifier { 
+        $$ = $1;
+        $$->push_back($2);
+        free($2);
+    }
 ;
 
 genset_modifier:
-    DISJOINT
-    | COMPLETE
-    | OVERLAPPING
-    | INCOMPLETE
+    DISJOINT { $$ = strdup("disjoint"); }
+    | COMPLETE { $$ = strdup("complete"); }
+    | OVERLAPPING { $$ = strdup("overlapping"); }
+    | INCOMPLETE { $$ = strdup("incomplete"); }
 ;
 
 genset_body:
     GENERAL CLASS_NAME SPECIFICS class_list opt_inner_genset_modifiers {
-        string baseClass = $2;
-        if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline()
-                 << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
+        partialSymbol* baseClass = $2;
+
+        if (currentScope->get(baseClass->str) == nullptr) {
+            cerr << "Aviso semântico [Linha " << baseClass->line
+                 << "]: Classe geral '" << baseClass->str << "' do genset ainda não declarada.\n";
         }
 
-        free($2);
+        destroyPartialSymbol(baseClass);
     }
     | SPECIFICS class_list GENERAL CLASS_NAME opt_inner_genset_modifiers {
-        string baseClass = $4;
-        if (currentScope->get(baseClass) == nullptr) {
-            cerr << "Aviso semântico [Linha " << AnalisadorLexicoSintatico->yyline() 
-                 << "]: Classe geral '" << baseClass << "' do genset ainda não declarada.\n";
+        partialSymbol* baseClass = $4;
+
+        if (currentScope->get(baseClass->str) == nullptr) {
+            cerr << "Aviso semântico [Linha " << baseClass->line 
+                 << "]: Classe geral '" << baseClass->str << "' do genset ainda não declarada.\n";
         }
 
-        free($4);
+        destroyPartialSymbol(baseClass);
+        if ($5 != nullptr) delete $5;
     }
 ;
 
 opt_inner_genset_modifiers:
-    %empty
-    | opt_inner_genset_modifiers genset_modifier
+    %empty { 
+        $$ = new vector<string>(); 
+    }
+    | opt_inner_genset_modifiers genset_modifier {
+        $$ = $1; 
+        $$->push_back($2);
+        free($2);
+    }
 ;
 
 /* 7. Relações Internas e Externas */
@@ -573,78 +659,129 @@ opt_inner_genset_modifiers:
 internal_rel:
     opt_at_stereotype opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
         if ($3 != nullptr) {
-            string relName = $3;
             string relType = ($1 != nullptr ? $1 : "relation");
 
-            symbol* relationName = AnalisadorLexicoSintatico->SymbolAtBack(3);
-            symbol* relationType = AnalisadorLexicoSintatico->SymbolAtBack(5);
-            currentScope->put(relName, new symbol(
-                relationType->type, 
-                relationType->category, 
-                relName, 
-                relationName->line, 
-                relationName->columnStart,
-                relationName->columnEnd, 
-                currentScope->getScopeName()
-            ));
+            relationalConectors* relationC = $3;
+            int relationType = relationC->left;
+
+            partialSymbol* className = $5;
+
+            string relName;
+            if (relationC->middle == nullptr) {
+                relName = "relação sem nome";
+
+                currentScope->put(relName, new symbol(
+                    (yytokentype)relationType, 
+                    "Internal relation", 
+                    relName, 
+                    className->line, 
+                    className->start,
+                    className->end, 
+                    currentScope->getScopeName()
+                ));
+            } else {
+                relName = relationC->middle->str;
+
+                currentScope->put(relName, new symbol(
+                    (yytokentype)relationType, 
+                    "Internal relation", 
+                    relName, 
+                    className->line, 
+                    className->start,
+                    className->end, 
+                    currentScope->getScopeName()
+                ));
+
+                destroyPartialSymbol(relationC->middle);
+            }
+            
+            cout << "Declaração de relação interna: " << relName << ", linha: " << className->line << "\n";
+
+            delete relationC;
+            destroyPartialSymbol(className);
         }
 
-        cout << "Declaração de relação interna\n";
         contextoAtual = TipoErro::RELACAO;
-
-        if ($3 != nullptr) free($3);
-        if ($5 != nullptr) free($5);
     }
 ;
 
 external_rel:
     opt_at_stereotype RELATION_KW domain_class opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
-        string relName = $3;
         string relType = ($1 != nullptr ? $1 : "relation");
 
-        symbol* relationName = AnalisadorLexicoSintatico->SymbolAtBack(5);
-        symbol* relationType = AnalisadorLexicoSintatico->SymbolAtBack(7);
+        partialSymbol* className = $3;
 
-        currentScope->put(relName, new symbol(
-            relationType->type,
-            relationType->category, 
-            relName, 
-            relationName->line, 
-            relationName->columnStart, 
-            relationName->columnEnd, 
-            currentScope->getScopeName()
-        ));
+        relationalConectors* relationC = $5;
+        int relationType = relationC->left;
+        string relName;
 
-        cout << "Declaração de relação externa\n";
+        if (relationC->middle == nullptr){
+            relName = "Relação externa sem nome";
 
-        if ($3 != nullptr) free($3);
-        if ($5 != nullptr) free($5);
+            currentScope->put(relName, new symbol(
+                (yytokentype)relationType, 
+                "External relation",
+                relName, 
+                className->line, 
+                className->start, 
+                className->end, 
+                currentScope->getScopeName()
+            ));
+        } else {
+            relName = relationC->middle->str;
+
+            currentScope->put(relName, new symbol(
+                (yytokentype)relationType, 
+                "External relation",
+                relName, 
+                className->line, 
+                className->start, 
+                className->end, 
+                currentScope->getScopeName()
+            ));
+
+            destroyPartialSymbol(relationC->middle);
+        }
+
+        cout << "Declaração de relação externa: " << relName << ", linha: " << className->line << "\n";
+
+        if ($1 != nullptr) free($1);
+        destroyPartialSymbol(className);
+        delete relationC;
     }
 ;
 
 domain_class:
-    CLASS_NAME    { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
+    CLASS_NAME { $$ = $1; }
 ;
 
 rel_connector:
-    relation_operator { $$ = nullptr; }
-    | relation_operator rel_ident relation_operator { $$ = $2; }
+    relation_operator { 
+        $$ = new relationalConectors();
+        $$->left = $1;
+        $$->middle = nullptr;
+        $$->right = 0;
+    }
+    | relation_operator rel_ident relation_operator { 
+        $$ = new relationalConectors(); 
+        $$->left = $1;
+        $$->middle = $2;
+        $$->right = $3;
+    }
 ;
 
 rel_ident:
     RELATION_NAME { $$ = $1; }
-    | CLASS_NAME  { $$ = $1; }
 ;
 
 opt_rel_alias:
-    %empty
-    | OPEN_PARENTHESES rel_ident CLOSE_PARENTHESES
+    %empty { $$ = nullptr; }
+    | OPEN_PARENTHESES rel_ident CLOSE_PARENTHESES { $$ = $2; }
 ;
 
 opt_cardinality:
-    %empty
-    | CARDINALITY
+    %empty { $$ = nullptr; }
+    | CARDINALITY { $$ = $1; }
 ;
 
 opt_at_stereotype:
@@ -653,9 +790,9 @@ opt_at_stereotype:
 ;
 
 relation_operator:
-    DASH
-    | AGGREGATION_OP
-    | COMPOSITION_OP
+    DASH { $$ = DASH; }
+    | AGGREGATION_OP { $$ = AGGREGATION_OP; }
+    | COMPOSITION_OP { $$ = COMPOSITION_OP; }
 ;
 
 relation_type:
@@ -703,6 +840,11 @@ int main(int argc, char ** argv)
     }
 
     AnalisadorLexicoSintatico->yySwitchStreams(file, cout);
+
+    cout << "\n=======================================================\n";
+    cout << "Análise do parser\n";
+    cout << "=======================================================\n";
+
     int parseResult = yyparse();
 
     delete AnalisadorLexicoSintatico;
@@ -731,7 +873,6 @@ int main(int argc, char ** argv)
     
     gerar_relatorio();
 
-    
     return parseResult;
 }
 
