@@ -152,8 +152,12 @@ import_path:
     | identifier DOT identifier
 ;
 
+package_kw: 
+    PACKAGE { contextoAtual = TipoErro::PACOTE; }
+;
+
 package_decl:
-    PACKAGE package_name {
+    package_kw package_name {
         partialSymbol* pkgName = $2;
         string name = pkgName->str;
 
@@ -197,11 +201,11 @@ declarations:
 ;
 
 declaration:
-    class_decl            { contextoAtual = TipoErro::CLASSE; }
-    | data_type_decl      { contextoAtual = TipoErro::DATA_TYPE; }
-    | enum_decl           { contextoAtual = TipoErro::ENUM; }
-    | generalization_decl { contextoAtual = TipoErro::GENSET; }
-    | external_rel        { contextoAtual = TipoErro::RELACAO; }
+    class_decl           
+    | data_type_decl     
+    | enum_decl          
+    | generalization_decl
+    | external_rel       
 ;
 
 /* 2. Declaração de Classes */
@@ -271,7 +275,7 @@ class_elements:
 
 class_element:
     attribute
-    | internal_rel { contextoAtual = TipoErro::RELACAO; }
+    | internal_rel
 ;
 
 opt_specializes:
@@ -304,30 +308,30 @@ class_list:
 ;
 
 class_stereotype:
-    EVENT                  { $$ = (char*)"event"; }
-  | SITUATION              { $$ = (char*)"situation"; }
-  | PROCESS                { $$ = (char*)"process"; }
-  | CATEGORY               { $$ = (char*)"category"; }
-  | MIXIN                  { $$ = (char*)"mixin"; }
-  | PHASE_MIXIN            { $$ = (char*)"phaseMixin"; }
-  | ROLE_MIXIN             { $$ = (char*)"roleMixin"; }
-  | HISTORICAL_MIXIN       { $$ = (char*)"historicalMixin"; }
-  | HISTORICAL_ROLE        { $$ = (char*)"historicalRole"; }
-  | HISTORICAL_ROLE_MIXIN  { $$ = (char*)"historicalRoleMixin"; }
-  | KIND                   { $$ = (char*)"kind"; }
-  | COLLECTIVE             { $$ = (char*)"collective"; }
-  | QUANTITY               { $$ = (char*)"quantity"; }
-  | QUALITY                { $$ = (char*)"quality"; }
-  | MODE                   { $$ = (char*)"mode"; }
-  | INTRINSIC_MODES        { $$ = (char*)"intrinsic-modes"; }
-  | EXTRINSIC_MODES        { $$ = (char*)"extrinsic-modes"; }
-  | SUBKIND                { $$ = (char*)"subkind"; }
-  | PHASE                  { $$ = (char*)"phase"; }
-  | ROLE                   { $$ = (char*)"role"; }
-  | RELATOR                { $$ = (char*)"relator"; }
+    EVENT                  { $$ = (char*)"event"; contextoAtual = TipoErro::CLASSE; }
+  | SITUATION              { $$ = (char*)"situation"; contextoAtual = TipoErro::CLASSE; }
+  | PROCESS                { $$ = (char*)"process"; contextoAtual = TipoErro::CLASSE; }
+  | CATEGORY               { $$ = (char*)"category"; contextoAtual = TipoErro::CLASSE; }
+  | MIXIN                  { $$ = (char*)"mixin"; contextoAtual = TipoErro::CLASSE; }
+  | PHASE_MIXIN            { $$ = (char*)"phaseMixin"; contextoAtual = TipoErro::CLASSE; }
+  | ROLE_MIXIN             { $$ = (char*)"roleMixin"; contextoAtual = TipoErro::CLASSE; }
+  | HISTORICAL_MIXIN       { $$ = (char*)"historicalMixin"; contextoAtual = TipoErro::CLASSE; }
+  | HISTORICAL_ROLE        { $$ = (char*)"historicalRole"; contextoAtual = TipoErro::CLASSE; }
+  | HISTORICAL_ROLE_MIXIN  { $$ = (char*)"historicalRoleMixin"; contextoAtual = TipoErro::CLASSE; }
+  | KIND                   { $$ = (char*)"kind"; contextoAtual = TipoErro::CLASSE; }
+  | COLLECTIVE             { $$ = (char*)"collective"; contextoAtual = TipoErro::CLASSE; }
+  | QUANTITY               { $$ = (char*)"quantity"; contextoAtual = TipoErro::CLASSE; }
+  | QUALITY                { $$ = (char*)"quality"; contextoAtual = TipoErro::CLASSE; }
+  | MODE                   { $$ = (char*)"mode"; contextoAtual = TipoErro::CLASSE; }
+  | INTRINSIC_MODES        { $$ = (char*)"intrinsic-modes"; contextoAtual = TipoErro::CLASSE; }
+  | EXTRINSIC_MODES        { $$ = (char*)"extrinsic-modes"; contextoAtual = TipoErro::CLASSE; }
+  | SUBKIND                { $$ = (char*)"subkind"; contextoAtual = TipoErro::CLASSE; }
+  | PHASE                  { $$ = (char*)"phase"; contextoAtual = TipoErro::CLASSE; }
+  | ROLE                   { $$ = (char*)"role"; contextoAtual = TipoErro::CLASSE; }
+  | RELATOR                { $$ = (char*)"relator"; contextoAtual = TipoErro::CLASSE; }
 ;
 
-/* 3. Declaração de Atributos */
+/* 2.1. Declaração de Atributos */
 
 attribute:
     attr_name COLON data_type opt_attribute_modifiers {
@@ -393,10 +397,14 @@ modifier_item:
     | REDEFINES CLASS_NAME
 ;
 
-/* 4. Tipos de Dados Complexos (Datatype) */
+/* 3. Tipos de Dados Complexos (Datatype) */
+
+data_type_kw:
+    DATA_TYPE { contextoAtual = TipoErro::DATA_TYPE; }
+;
 
 data_type_decl:
-     DATA_TYPE datatype_name {
+     data_type_kw datatype_name {
         partialSymbol* dtName = $2;
 
         if (currentScope->getLocal(string(dtName->str)) != nullptr) {
@@ -435,10 +443,14 @@ opt_datatype_attributes:
     | opt_datatype_attributes attribute opt_attribute_modifiers
 ;
 
-/* 5. Classes Enumeradas (Enum) */
+/* 4. Classes Enumeradas (Enum) */
+
+enum_kw:
+    ENUM { contextoAtual = TipoErro::ENUM; }
+;
 
 enum_decl:
-    ENUM CLASS_NAME {
+    enum_kw CLASS_NAME {
         partialSymbol* enumName = $2;
 
         if (currentScope->getLocal(enumName->str) != nullptr) {
@@ -512,7 +524,7 @@ enum_member:
     /* Somente nome de classes */
 ;
 
-/* 6. Conjuntos de Generalizações (Genset) */
+/* 5. Conjuntos de Generalizações (Genset) */
 
 generalization_decl:
     genset_modifiers GENSET genset_name WHERE class_list SPECIALIZES CLASS_NAME {
@@ -604,11 +616,13 @@ genset_name:
 genset_modifiers:
     %empty { 
         $$ = new vector<string>(); 
+        contextoAtual = TipoErro::GENSET;
     }
     | genset_modifiers genset_modifier { 
         $$ = $1;
         $$->push_back($2);
         free($2);
+        contextoAtual = TipoErro::GENSET;
     }
 ;
 
@@ -654,7 +668,7 @@ opt_inner_genset_modifiers:
     }
 ;
 
-/* 7. Relações Internas e Externas */
+/* 6. Relações Internas e Externas */
 
 internal_rel:
     opt_at_stereotype opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
@@ -785,8 +799,8 @@ opt_cardinality:
 ;
 
 opt_at_stereotype:
-    %empty { $$ = nullptr; }
-    | AT relation_type { $$ = $2; }
+    %empty { $$ = nullptr; contextoAtual = TipoErro::RELACAO; }
+    | AT relation_type { $$ = $2; contextoAtual = TipoErro::RELACAO; }
 ;
 
 relation_operator:

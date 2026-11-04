@@ -59,7 +59,7 @@ void registrar_erro(
 
 // Exibe todos os erros registrados.
 void gerar_relatorio() {
-    std::cout << "\n========== RELATORIO DE ERROS ==========\n";
+    std::cout << "\n========== ERRO ENCONTRADO ==========\n";
 
     if (erros.empty()) {
         std::cout << "\nNenhum erro encontrado.\n";
@@ -68,8 +68,6 @@ void gerar_relatorio() {
 
     for (size_t i = 0; i < erros.size(); i++) {
         const ErroSintatico& erro = erros[i];
-
-        std::cout << "\nErro " << i + 1 << "\n";
 
         std::cout << "Categoria: "
                   << obter_nome_tipo(erro.tipo) << "\n";
@@ -86,7 +84,6 @@ void gerar_relatorio() {
         std::cout << "----------------------------------------\n";
     }
 
-    std::cout << "\nTotal de erros: " << erros.size() << "\n";
 }
 
 // Retorna a quantidade de erros registrados.
