@@ -119,7 +119,7 @@ package_decl:
         string pkgName = $2;
         currentScope->setScopeName("package " + pkgName);
 
-        symbol* smb = AnalisadorLexicoSintatico->SymbolAtBack(0);
+        symbol* smb = AnalisadorLexicoSintatico->SymbolAtBack(1);
         smb->scope = currentScope->getScopeName();
 
         currentScope->put("package " + pkgName, new symbol(
@@ -232,7 +232,7 @@ class_elements:
 
 class_element:
     attribute
-    | internal_rel { cout << "Declaração de relação interna\n"; }
+    | internal_rel
 ;
 
 opt_specializes:
@@ -288,7 +288,7 @@ class_stereotype:
   | RELATOR                { $$ = (char*)"relator"; contextoAtual = TipoErro::CLASSE; }
 ;
 
-/* 3. Declaração de Atributos */
+/* 2.1. Declaração de Atributos */
 
 attribute:
     attr_name COLON data_type opt_attribute_modifiers {
@@ -357,7 +357,7 @@ modifier_item:
     | REDEFINES CLASS_NAME
 ;
 
-/* 4. Tipos de Dados Complexos (Datatype) */
+/* 3. Tipos de Dados Complexos (Datatype) */
 
 data_type_kw:
     DATA_TYPE { contextoAtual = TipoErro::DATA_TYPE; }
@@ -404,7 +404,7 @@ opt_datatype_attributes:
     | opt_datatype_attributes attribute
 ;
 
-/* 5. Classes Enumeradas (Enum) */
+/* 4. Classes Enumeradas (Enum) */
 
 enum_kw:
     ENUM { contextoAtual = TipoErro::ENUM; }
@@ -479,7 +479,7 @@ enum_member:
     | NUMBER_LITERAL { $$ = $1; }
 ;
 
-/* 6. Conjuntos de Generalizações (Genset) */
+/* 5. Conjuntos de Generalizações (Genset) */
 
 generalization_decl:
     genset_modifiers GENSET genset_name WHERE class_list SPECIALIZES CLASS_NAME {
@@ -579,7 +579,7 @@ opt_inner_genset_modifiers:
     | opt_inner_genset_modifiers genset_modifier
 ;
 
-/* 7. Relações Internas e Externas */
+/* 6. Relações Internas e Externas */
 
 internal_rel:
     opt_at_stereotype opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
