@@ -1,19 +1,21 @@
 %{
-#include "parser.tab.h"
+#include "../analizador_sintatico/parser.tab.h"
 
-int column = 1;
-int yycolumn = 1;
+int yycolumnStart = 1;
+int yycolumnEnd = 1;
 
 void updateColumnPos(int leng) {
-    yycolumn = column;
-    column += leng;
+    yycolumnStart = yycolumnEnd;
+    yycolumnEnd += leng;
 }
 
 void resetColumn() {
-    column = 1;
+    yycolumnEnd = 1;
+    yycolumnStart = 1;
 }
 
 #define YY_USER_ACTION updateColumnPos(yyleng);
+#define YY_DECL int yyFlexLexer::yylex()
 
 %}
 
@@ -33,7 +35,7 @@ newType             ({letter})+("DataType")
 className           [A-Z]({letter}|_)*
 relationName        [a-z]({letter}|_)*
 cardinality         \[([0-9]+|\*|[0-9]+\.\.([0-9]+|\*))\]
-/* symbol              ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",") */
+/* symbol            ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",") */
 
 %%
 {ws}                    {/* nenhuma ação e nenhum retorno */}
@@ -82,7 +84,7 @@ extrinsic-modes         return EXTRINSIC_MODES;
 subkind                 return SUBKIND;
 phase                   return PHASE;
 role                    return ROLE;
-relator                    return RELATOR;
+relator                 return RELATOR;
 
 material                return MATERIAL;
 derivation              return DERIVATION;
@@ -115,18 +117,21 @@ specializes             return SPECIALIZES;
 datatype                return DATA_TYPE;
 enum                    return ENUM;
 
-{number}                return NUMBER_LITERAL;
-{instanceName}          return INSTANCE_NAME;
-{newType}               return NEW_TYPE;
-{className}             return CLASS_NAME;
-{relationName}          return RELATION_NAME;
+{number}                { yylval.symb = new partialSymbol(NUMBER_LITERAL, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NUMBER_LITERAL; }
+{instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
+{newType}               { yylval.symb = new partialSymbol(NEW_TYPE, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NEW_TYPE; }
+{className}             { yylval.symb = new partialSymbol(CLASS_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CLASS_NAME; }
+{relationName}          { yylval.symb = new partialSymbol(RELATION_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return RELATION_NAME; }
 
-"{"                     return '{';
-"}"                     return '}';
-":"                     return ':';
-","                     return ',';
-"@"                     return '@';
-{cardinality}           return  CARDINALITY;
+"{"                     return OPEN_BRACES;
+"}"                     return CLOSE_BRACES;
+"("                     return OPEN_PARENTHESES;
+")"                     return CLOSE_PARENTHESES;
+":"                     return COLON;
+","                     return COMMA;
+"@"                     return AT;
+"."                     return DOT;
+{cardinality}           { yylval.symb = new partialSymbol(CARDINALITY, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CARDINALITY; }
 "<>--"                  return AGGREGATION_OP;
 "<o>--"                 return COMPOSITION_OP;
 "--"                    return DASH;
