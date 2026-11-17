@@ -12,54 +12,52 @@ using std::string;
 
 // ------------------------------------------------------------------------------
 
-enum class SymbolCategory {
-    RESERVED_WORDS = yytokentype::GENSET,
+enum class yyTokenCategory {
+    CLASS_STEREOTYPES = yytokentype::EVENT,
+    RESERVED_WORDS = yytokentype::RELATION,
+    GENERALIZATION = yytokentype::GENSET,
     PRIMITIVE_TYPE = yytokentype::NUMBER,
     META_ATTRIBUTE = yytokentype::ORDERED,
-    CLASS_STEREOTYPES = yytokentype::EVENT,
     RELATION_STEREOTYPES = yytokentype::MATERIAL,
-    NUMBER_LITERAL = yytokentype::NUMBER_LITERAL,
-    DATA_TYPE = yytokentype::DATA_TYPE,
-    INSTANCE_NAME = yytokentype::INSTANCE_NAME,
-    NEW_TYPE = yytokentype::NEW_TYPE, 
-    CLASS_NAME = yytokentype::CLASS_NAME,
-    RELATION_NAME = yytokentype::RELATION_NAME, 
-    UNKNOWN_SYMBOL = yytokentype::UNKNOWN,
+    RELATION_OP = yytokentype::DASH,
     SPECIAL_SYMBOL = yytokentype::OPEN_BRACES, 
-    RELATION_OP = yytokentype::RELATION_KW,
-    ENUM = yytokentype::ENUM,
-    ATTR_NAME = yytokentype::ATTR_NAME
+    NUMBER_LITERAL = yytokentype::NUMBER_LITERAL,
+    CARDINALITY = yytokentype::CARDINALITY,
+    INSTANCE_NAME = yytokentype::INSTANCE_NAME,
+    NEW_TYPE = yytokentype::NEW_TYPE,
+    CLASS_NAME = yytokentype::CLASS_NAME,
+    RELATION_NAME = yytokentype::RELATION_NAME,
+    PACKAGE_NAME = yytokentype::PACKAGE_NAME,
+    UNKNOWN_TOKEN = yytokentype::UNKNOWN
 };
 
 // ------------------------------------------------------------------------------
 
-struct symbol {
+struct token {
     yytokentype type;
-    string category;
+    yyTokenCategory category;
     string name;
     uint line;
     uint columnStart;
     uint columnEnd;
-    string scope;
     
-    symbol(){};
+    token(){};
 
-    symbol(
+    token(
         yytokentype type, 
-        string cat, 
+        yyTokenCategory cat, 
         string name, 
         uint line, 
         uint start,
-        uint end,
-        string scope = ""
-    ) : type(type), category(cat), name(name), line(line), columnStart(start), columnEnd(end), scope(scope){};
+        uint end
+    ) : type(type), category(cat), name(name), line(line), columnStart(start), columnEnd(end){};
 
-    virtual ~symbol() = default;
+    virtual ~token() = default;
 
     string toString() const;
 };
 
 // ------------------------------------------------------------------------------
 
-string SymbolTypeToString(yytokentype type);
-string SymbolCategoryToString(SymbolCategory cat);
+string TokenTypeToString(yytokentype type);
+string TokenCategoryToString(yyTokenCategory cat);

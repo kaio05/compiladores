@@ -31,26 +31,58 @@ digit               [0-9]
 number              {digit}+(\.{digit}+)?(E[+-]?{digit}+)?
 letter              [A-Za-z]
 instanceName        ({letter})+({digit})+
+packageName         ({letter})+("Package")
 newType             ({letter})+("DataType")
 className           [A-Z]({letter}|_)*
 relationName        [a-z]({letter}|_)*
 cardinality         \[([0-9]+|\*|[0-9]+\.\.([0-9]+|\*))\]
-/* symbol            ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",") */
+/* symbol           ("{"|"}"|"("|")"|"["|"]"|".."|"<>--"|"--<>"|"<o>--"|"--<o>"|\*|\@|\:|"--"|",") */
 
 %%
 {ws}                    {/* nenhuma ação e nenhum retorno */}
 {newline}               resetColumn();
 {comment}               resetColumn();
 
+event                   return EVENT;
+situation               return SITUATION;
+process                 return PROCESS;
+category                return CATEGORY;
+mixin                   return MIXIN;
+phaseMixin              return PHASE_MIXIN;
+roleMixin               return ROLE_MIXIN;
+historicalRole          return HISTORICAL_ROLE;
+historicalMixin         return HISTORICAL_MIXIN;
+historicalRoleMixin     return HISTORICAL_ROLE_MIXIN;
+kind                    return KIND;
+collective              return COLLECTIVE;
+quantity                return QUANTITY;
+quality                 return QUALITY;
+mode                    return MODE;
+intrinsic-modes         return INTRINSIC_MODES;
+extrinsic-modes         return EXTRINSIC_MODES;
+functional-complexes    return FUNCTIONAL_COMPLEXES;
+subkind                 return SUBKIND;
+phase                   return PHASE;
+role                    return ROLE;
+relator                 return RELATOR;
+relators                return RELATORS;
+
+relation                return RELATION;
+package                 return PACKAGE;
+import                  return IMPORT;
+of                      return OF;
+datatype                return DATA_TYPE;
+enum                    return ENUM;
+specializes             return SPECIALIZES;
+
 genset                  return GENSET;
 disjoint                return DISJOINT;
 complete                return COMPLETE;
+overlapping             return OVERLAPPING;
+incomplete              return INCOMPLETE;
 general                 return GENERAL;
 specifics               return SPECIFICS;
 where                   return WHERE;
-package                 return PACKAGE;
-import                  return IMPORT;
-functional-complexes    return FUNCTIONAL_COMPLEXES;
 
 number                  return NUMBER;
 string                  return STRING;
@@ -65,27 +97,6 @@ derived                 return DERIVED;
 subsets                 return SUBSETS;
 redefines               return REDEFINES;
 
-event                   return EVENT;
-situation               return SITUATION;
-process                 return PROCESS;
-category                return CATEGORY;
-mixin                   return MIXIN;
-phaseMixin              return PHASE_MIXIN;
-roleMixin               return ROLE_MIXIN;
-historicalRole          return HISTORICAL_ROLE;
-historicalRoleMixin     return HISTORICAL_ROLE_MIXIN;
-kind                    return KIND;
-collective              return COLLECTIVE;
-quantity                return QUANTITY;
-quality                 return QUALITY;
-mode                    return MODE;
-intrinsic-modes         return INTRINSIC_MODES;
-extrinsic-modes         return EXTRINSIC_MODES;
-subkind                 return SUBKIND;
-phase                   return PHASE;
-role                    return ROLE;
-relator                 return RELATOR;
-
 material                return MATERIAL;
 derivation              return DERIVATION;
 comparative             return COMPARATIVE;
@@ -98,8 +109,8 @@ subCollectionOf         return SUB_COLLECTION_OF;
 subQualityOf            return SUB_QUALITY_OF;
 instantiation           return INSTANTIATION;
 termination             return TERMINATION;
-participation           return PARTICIPATION;
 participational         return PARTICIPATIONAL;
+participation           return PARTICIPATION;
 historicalDependence    return HISTORICAL_DEPENDENCE;
 creation                return CREATION;
 manifestation           return MANIFESTATION;
@@ -111,17 +122,10 @@ inherence               return INHERENCE;
 value                   return VALUE;
 formal                  return FORMAL;
 constitution            return CONSTITUTION;
-relation                return RELATION_KW;
 
-specializes             return SPECIALIZES;
-datatype                return DATA_TYPE;
-enum                    return ENUM;
-
-{number}                { yylval.symb = new partialSymbol(NUMBER_LITERAL, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NUMBER_LITERAL; }
-{instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
-{newType}               { yylval.symb = new partialSymbol(NEW_TYPE, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NEW_TYPE; }
-{className}             { yylval.symb = new partialSymbol(CLASS_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CLASS_NAME; }
-{relationName}          { yylval.symb = new partialSymbol(RELATION_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return RELATION_NAME; }
+"--"                    return DASH;
+"<>--"                  return AGGREGATION_OP;
+"<o>--"                 return COMPOSITION_OP;
 
 "{"                     return OPEN_BRACES;
 "}"                     return CLOSE_BRACES;
@@ -131,10 +135,14 @@ enum                    return ENUM;
 ","                     return COMMA;
 "@"                     return AT;
 "."                     return DOT;
+
+{number}                { yylval.symb = new partialSymbol(NUMBER_LITERAL, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NUMBER_LITERAL; }
 {cardinality}           { yylval.symb = new partialSymbol(CARDINALITY, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CARDINALITY; }
-"<>--"                  return AGGREGATION_OP;
-"<o>--"                 return COMPOSITION_OP;
-"--"                    return DASH;
+{instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
+{newType}               { yylval.symb = new partialSymbol(NEW_TYPE, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NEW_TYPE; }
+{className}             { yylval.symb = new partialSymbol(CLASS_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CLASS_NAME; }
+{relationName}          { yylval.symb = new partialSymbol(RELATION_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return RELATION_NAME; }
+{packageName}           { yylval.symb = new partialSymbol(PACKAGE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return PACKAGE_NAME; }
 
 .                       return UNKNOWN;
 

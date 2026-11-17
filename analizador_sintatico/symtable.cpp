@@ -2,6 +2,46 @@
 #include <sstream>
 #include <iomanip>
 
+std::string categoryToString(SymbolCategory cat) {
+    switch (cat) {
+        case SymbolCategory::PACKAGE:       return "Pacote";
+        case SymbolCategory::CLASS:         return "Classe";
+        case SymbolCategory::DATATYPE:      return "Tipo de Dados";
+        case SymbolCategory::ENUM:          return "Enum";
+        case SymbolCategory::ATTRIBUTE:     return "Atributo";
+        case SymbolCategory::RELATION:      return "Relação";
+        case SymbolCategory::GENSET:        return "Genset";
+        case SymbolCategory::CARDINALITY:   return "Cardinalidade";
+        default:                            return "Outro";
+    }
+}
+
+// ============================================================================
+// Implementação de Symbol
+// ============================================================================
+
+Symbol::Symbol(
+    const std::string& name, 
+    SymbolCategory cat, 
+    const std::string& type,
+    unsigned int line, 
+    unsigned int columnStart,
+    unsigned int columnEnd, 
+    const std::string& scope
+): name(name), category(cat), type(type), line(line), columnStart(columnStart), columnEnd(columnEnd), scope(scope) {}
+
+std::string Symbol::toString() const {
+    std::ostringstream ss;
+    ss << "[" << categoryToString(category) << "] " << name;
+    if (!type.empty()) {
+        ss << " : " << type;
+    }
+    if (line > 0) {
+        ss << " (line: " << line << ", column start: " << columnStart << ", column end:" << columnEnd << ")";
+    }
+    return ss.str();
+}
+
 // ============================================================================
 // Implementação de SymTable (Tabela de Dispersão Encadeada
 // ============================================================================
@@ -17,11 +57,11 @@ SymTable::~SymTable() {
     table.clear();
 }
 
-void SymTable::put(const std::string& s, symbol* sym) {
+void SymTable::put(const std::string& s, Symbol* sym) {
     table[s] = sym;
 }
 
-symbol* SymTable::get(const std::string& s) {
+Symbol* SymTable::get(const std::string& s) {
     // Busca encadeada percorrendo do escopo atual para o mais externo
     for (SymTable* st = this; st != nullptr; st = st->prev) {
         auto it = st->table.find(s);
@@ -32,7 +72,7 @@ symbol* SymTable::get(const std::string& s) {
     return nullptr;
 }
 
-symbol* SymTable::getLocal(const std::string& s) {
+Symbol* SymTable::getLocal(const std::string& s) {
     auto it = table.find(s);
     if (it != table.end()) {
         return it->second;
@@ -42,7 +82,6 @@ symbol* SymTable::getLocal(const std::string& s) {
 
 void SymTable::printTable(std::ostream& out) const {
     out << "--- Tabela de Símbolos [Escopo: " << scopeName << "] ---\n";
-    out << "Tamanho: " << table.size() << " entradas (Bucket count: " << table.bucket_count() << ")\n";
     for (const auto& pair : table) {
         out << "  Chave [\"" << pair.first << "\"] => " << (pair.second ? pair.second->toString() : "null") << "\n";
     }

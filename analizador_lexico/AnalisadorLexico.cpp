@@ -20,20 +20,20 @@ AnalisadorLexico::AnalisadorLexico(ifstream& instream, ostream& outstream)
 
 AnalisadorLexico::~AnalisadorLexico()
 {
-    if (!validSymbols.empty()) {
-        for (auto symb : validSymbols) {
+    if (!validTokens.empty()) {
+        for (auto symb : validTokens) {
             delete symb;
         }
 
-        validSymbols.clear();
+        validTokens.clear();
     }
 
-    if (!unknownSymbols.empty()) {
-        for (auto symb : unknownSymbols) {
+    if (!unknownTokens.empty()) {
+        for (auto symb : unknownTokens) {
             delete symb;
         }
 
-        unknownSymbols.clear();
+        unknownTokens.clear();
     }
 }
 
@@ -47,23 +47,23 @@ int AnalisadorLexico::yylex()
         return readToken;
     }
 
-    SymbolCategory symbolClass = classifySymbols(readToken);
+    yyTokenCategory tokenClass = classifyTokens(readToken);
 
-    currentSymbol = symbol(
+    currentToken = token(
         static_cast<yytokentype>(readToken),
-        SymbolCategoryToString(symbolClass),
+        tokenClass,
         lexer.YYText(),
         lexer.lineno(),
         yyColumnStart,
         yyColumnEnd
     );
 
-    classifiedSymbols[symbolClass]++;
+    classifiedTokens[tokenClass]++;
 
     if (readToken == UNKNOWN) {
-        unknownSymbols.push_back(new symbol(currentSymbol));
+        unknownTokens.push_back(new token(currentToken));
     } else {
-        validSymbols.push_back(new symbol(currentSymbol));
+        validTokens.push_back(new token(currentToken));
     }
 
     return readToken;
@@ -75,22 +75,22 @@ void AnalisadorLexico::yySwitchStreams(ifstream& instream, ostream& outstream)
 {
     lexer.switch_streams(instream, outstream);
 
-    if (!validSymbols.empty()) {
-        for (auto symb : validSymbols) {
+    if (!validTokens.empty()) {
+        for (auto symb : validTokens) {
             delete symb;
         }
-        validSymbols.clear();
+        validTokens.clear();
     }
 
-    if (!classifiedSymbols.empty()) {
-        classifiedSymbols.clear();
+    if (!classifiedTokens.empty()) {
+        classifiedTokens.clear();
     }
 
-    if (!unknownSymbols.empty()) {
-        for (auto symb : unknownSymbols) {
+    if (!unknownTokens.empty()) {
+        for (auto symb : unknownTokens) {
             delete symb;
         }
-        unknownSymbols.clear();
+        unknownTokens.clear();
     }
 }
 
@@ -102,10 +102,10 @@ void AnalisadorLexico::start()
 
     while(this->yylex() > 0) {
         cout << "<Token: " 
-             << SymbolTypeToString(currentSymbol.type) << ", " 
-             << currentSymbol.category << ", " 
-             << "\"" << currentSymbol.name << "\"" 
-             << ", line: " << currentSymbol.line
+             << TokenTypeToString(currentToken.type) << ", " 
+             << TokenCategoryToString(currentToken.category) << ", " 
+             << "\"" << currentToken.name << "\"" 
+             << ", line: " << currentToken.line
              << ", column start:" << yycolumnStart 
              << ", column end: " << yycolumnEnd
              << ">\n";
@@ -113,37 +113,43 @@ void AnalisadorLexico::start()
 
     cout << "\nFim do arquivo.\n\n";
 
+    printResults();
+}
 
+// ------------------------------------------------------------------------------
+
+void AnalisadorLexico::printResults()
+{
     cout << "=================\n" << "Tabela de síntese\n" << "=================\n";
 
-	for(auto pair: classifiedSymbols) {
-		cout << SymbolCategoryToString(pair.first) << ": "<< pair.second << "\n";
-	}
+    for(auto pair: classifiedTokens) {
+        cout << TokenCategoryToString(pair.first) << ": "<< pair.second << "\n";
+    }
 
-	if (!unknownSymbols.empty()) {
-		cout << "\n\n";
-		cout << "====================\n" << "Tokens desconhecidos\n" << "====================\n";
+    if (!unknownTokens.empty()) {
+        cout << "\n\n";
+        cout << "====================\n" << "Tokens desconhecidos\n" << "====================\n";
 
-		for (auto token : unknownSymbols) {
+        for (auto token : unknownTokens) {
             cout << "Caractere: \"" 
             << token->name << "\" desconhecido." 
             << " Linha: " << token->line 
             << ". Colunas: " << token->columnStart
             << " a " << token->columnEnd << "."
             << "\n";
-		}
-	}
+        }
+    }
 }
 
 // ------------------------------------------------------------------------------
 
-symbol* AnalisadorLexico::SymbolAtBack(int index) 
+token* AnalisadorLexico::TokenAtBack(int index) 
 {
-    if (validSymbols.empty()) {
+    if (validTokens.empty()) {
         return nullptr;
     }
 
-    auto endIterator = validSymbols.end();
+    auto endIterator = validTokens.end();
     endIterator--;
 
     for (int i = 0; i < index; i++) {
@@ -155,29 +161,32 @@ symbol* AnalisadorLexico::SymbolAtBack(int index)
 
 // ------------------------------------------------------------------------------
 
-SymbolCategory AnalisadorLexico::classifySymbols(uint type)
+yyTokenCategory AnalisadorLexico::classifyTokens(uint type)
 {
-    if (type >= (uint)SymbolCategory::RESERVED_WORDS && type < (uint)SymbolCategory::PRIMITIVE_TYPE) {
-        return SymbolCategory::RESERVED_WORDS; 
+    if (type >= (uint)yyTokenCategory::CLASS_STEREOTYPES && type < (uint)yyTokenCategory::RESERVED_WORDS) {
+        return yyTokenCategory::CLASS_STEREOTYPES; 
     } 
-    else if (type >= (uint)SymbolCategory::PRIMITIVE_TYPE && type < (uint)SymbolCategory::META_ATTRIBUTE) {
-        return SymbolCategory::PRIMITIVE_TYPE;
+    else if (type >= (uint)yyTokenCategory::RESERVED_WORDS && type < (uint)yyTokenCategory::GENERALIZATION) {
+        return yyTokenCategory::RESERVED_WORDS;
     } 
-    else if (type >= (uint)SymbolCategory::META_ATTRIBUTE && type < (uint)SymbolCategory::CLASS_STEREOTYPES) {
-        return SymbolCategory::META_ATTRIBUTE;
+    else if (type >= (uint)yyTokenCategory::GENERALIZATION && type < (uint)yyTokenCategory::PRIMITIVE_TYPE) {
+        return yyTokenCategory::GENERALIZATION;
     }
-    else if (type >= (uint)SymbolCategory::CLASS_STEREOTYPES && type < (uint)SymbolCategory::RELATION_STEREOTYPES) {
-        return SymbolCategory::CLASS_STEREOTYPES;
+    else if (type >= (uint)yyTokenCategory::PRIMITIVE_TYPE && type < (uint)yyTokenCategory::META_ATTRIBUTE) {
+        return yyTokenCategory::PRIMITIVE_TYPE;
     }
-    else if (type >= (uint)SymbolCategory::RELATION_STEREOTYPES && type < (uint)SymbolCategory::NUMBER_LITERAL) {
-        return SymbolCategory::RELATION_STEREOTYPES;
+    else if (type >= (uint)yyTokenCategory::META_ATTRIBUTE && type < (uint)yyTokenCategory::RELATION_STEREOTYPES) {
+        return yyTokenCategory::META_ATTRIBUTE;
     } 
-    else if (type >= (uint)SymbolCategory::SPECIAL_SYMBOL && type < (uint)SymbolCategory::RELATION_OP) {
-        return SymbolCategory::SPECIAL_SYMBOL;
+    else if (type >= (uint)yyTokenCategory::RELATION_STEREOTYPES && type < (uint)yyTokenCategory::RELATION_OP) {
+        return yyTokenCategory::RELATION_STEREOTYPES;
     }
-    else if (type >= (uint)SymbolCategory::RELATION_OP && type < (uint)SymbolCategory::ENUM) {
-        return SymbolCategory::RELATION_OP;
+    else if (type >= (uint)yyTokenCategory::RELATION_OP && type < (uint)yyTokenCategory::SPECIAL_SYMBOL) {
+        return yyTokenCategory::RELATION_OP;
+    }
+    else if (type >= (uint)yyTokenCategory::SPECIAL_SYMBOL && type < (uint)yyTokenCategory::NUMBER_LITERAL){
+        return yyTokenCategory::SPECIAL_SYMBOL;
     }
 
-    return static_cast<SymbolCategory>(type);
+    return static_cast<yyTokenCategory>(type);
 }

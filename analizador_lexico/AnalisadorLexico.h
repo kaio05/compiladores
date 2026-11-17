@@ -7,7 +7,7 @@
 #include <vector>
 #include <unordered_map>
 #include <FlexLexer.h>
-#include "../symbol/Symbol.h"
+#include "Token.h"
 #include "../analizador_sintatico/parser.tab.h"
 
 // ------------------------------------------------------------------------------
@@ -34,11 +34,11 @@ private:
     static inline int& yyColumnEnd = yycolumnEnd;
 
     yyFlexLexer lexer;
-    symbol currentSymbol;
+    token currentToken;
 
-    vector<symbol*> validSymbols;
-    unordered_map<SymbolCategory, int> classifiedSymbols;
-    vector<symbol*> unknownSymbols;
+    vector<token*> validTokens;
+    unordered_map<yyTokenCategory, int> classifiedTokens;
+    vector<token*> unknownTokens;
 
 public: 
     AnalisadorLexico();
@@ -49,27 +49,28 @@ public:
     
     int yylex();
     void start();
+    void printResults();
 
-    SymbolCategory classifySymbols(uint type);
+    yyTokenCategory classifyTokens(uint type);
 
-    symbol CurrentSymbol();
-    symbol SymbolAt(int index);
-    symbol* SymbolAtBack(int index);
+    token CurrentToken();
+    token TokenAt(int index);
+    token* TokenAtBack(int index);
 
     uint yyline();
     uint currentColumnStart();
     uint currentColumnEnd();
 
-    unordered_map<SymbolCategory, int>& ClassifiedSymbols();
-    vector<symbol*>& UnknownSymbols();
+    unordered_map<yyTokenCategory, int>& ClassifiedTokens();
+    vector<token*>& UnknownTokens();
 };
 
-inline symbol AnalisadorLexico::CurrentSymbol() {
-    return currentSymbol;
+inline token AnalisadorLexico::CurrentToken() {
+    return currentToken;
 }
 
-inline symbol AnalisadorLexico::SymbolAt(int index) {
-    return *validSymbols.at(index);
+inline token AnalisadorLexico::TokenAt(int index) {
+    return *validTokens.at(index);
 }
 
 inline uint AnalisadorLexico::yyline() {
@@ -84,10 +85,10 @@ inline uint AnalisadorLexico::currentColumnEnd() {
     return yyColumnEnd;
 }
 
-inline unordered_map<SymbolCategory, int>& AnalisadorLexico::ClassifiedSymbols() {
-    return classifiedSymbols;
+inline unordered_map<yyTokenCategory, int>& AnalisadorLexico::ClassifiedTokens() {
+    return classifiedTokens;
 }
 
-inline vector<symbol*>& AnalisadorLexico::UnknownSymbols() {
-    return unknownSymbols;
+inline vector<token*>& AnalisadorLexico::UnknownTokens() {
+    return unknownTokens;
 }

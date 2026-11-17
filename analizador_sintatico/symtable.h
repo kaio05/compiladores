@@ -4,7 +4,49 @@
 #include <string>
 #include <unordered_map>
 #include <iostream>
-#include "../symbol/Symbol.h"
+
+// ============================================================================
+// Estrutura de Símbolo da Linguagem TONTO
+// ============================================================================
+
+enum class SymbolCategory {
+    PACKAGE,
+    CLASS,
+    DATATYPE,
+    ENUM,
+    ATTRIBUTE,
+    RELATION,
+    GENSET,
+    CARDINALITY,
+    OTHER
+};
+
+std::string SymbolCategoryToString(SymbolCategory cat);
+
+class Symbol {
+public:
+    std::string name;
+    SymbolCategory category;
+    std::string type;
+    unsigned int line;
+    unsigned int columnStart;
+    unsigned int columnEnd;
+    std::string scope;
+
+    Symbol(
+        const std::string& name, 
+        SymbolCategory cat = SymbolCategory::OTHER,
+        const std::string& type = "", 
+        unsigned int line = 0, 
+        unsigned int columnStart = 0, 
+        unsigned int columnEnd = 0, 
+        const std::string& scope = ""
+    );
+    
+    virtual ~Symbol() = default;
+
+    virtual std::string toString() const;
+};
 
 // ============================================================================
 // Tabela de Símbolos como Tabela de Dispersão Encadeada (Escopos)
@@ -13,7 +55,7 @@
 class SymTable {
 private:
     // Tabela de dispersão
-    std::unordered_map<std::string, symbol*> table;
+    std::unordered_map<std::string, Symbol*> table;
 
     // Ponteiro para a tabela do bloco/escopo mais externo
     SymTable* prev;
@@ -26,19 +68,19 @@ public:
     ~SymTable();
 
     // Insere símbolo no escopo atual
-    void put(const std::string& s, symbol* sym);
+    void put(const std::string& s, Symbol* sym);
 
     // Consulta símbolo encadeado do escopo interno para os externos
-    symbol* get(const std::string& s);
+    Symbol* get(const std::string& s);
 
     // Consulta símbolo apenas no escopo local
-    symbol* getLocal(const std::string& s);
+    Symbol* getLocal(const std::string& s);
 
     // Acessores e utilitários
     SymTable* getPrev() const { return prev; }
     const std::string& getScopeName() const { return scopeName; }
     void setScopeName(const std::string& name) { scopeName = name; }
-    const std::unordered_map<std::string, symbol*>& getTable() const { return table; }
+    const std::unordered_map<std::string, Symbol*>& getTable() const { return table; }
 
     void printTable(std::ostream& out = std::cout) const;
 };

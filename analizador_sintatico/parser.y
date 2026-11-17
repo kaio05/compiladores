@@ -12,22 +12,20 @@
         int end;
     };
 
-    struct relationalConectors {
+    struct relationalConector {
         int left;
         partialSymbol* middle;
         int right;
     };
 }
-
 %{
 #include <fstream>
 #include <iostream>
-#include <cstdlib>
-#include <cstdio>
 #include <cstring>
 #include "symtable.h"
 #include "relatorio.h"
 #include "../analizador_lexico/AnalisadorLexico.h"
+
 
 int yylex();
 int yyparse();
@@ -66,26 +64,34 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 
 %union {
     partialSymbol* symb;
-    char* str;
     vector<string>* gensetMods;
-    relationalConectors* connectors;
+    relationalConector* connector;
+    char* str;
     int integer;
 }
 
 /* Tokens das palavras reservadas e dos estereótipos. */
-%token GENSET DISJOINT COMPLETE OVERLAPPING INCOMPLETE GENERAL SPECIFICS WHERE
-%token PACKAGE IMPORT OF FUNCTIONAL_COMPLEXES RELATORS
 
-%token NUMBER STRING BOOLEAN DATE TIME DATETIME
-
-%token ORDERED CONST DERIVED SUBSETS REDEFINES
-
+/* Estereótipos de classes */
 %token EVENT SITUATION PROCESS CATEGORY MIXIN PHASE_MIXIN
-%token ROLE_MIXIN HISTORICAL_MIXIN HISTORICAL_ROLE
+%token ROLE_MIXIN HISTORICAL_ROLE HISTORICAL_MIXIN
 %token HISTORICAL_ROLE_MIXIN KIND COLLECTIVE QUANTITY
 %token QUALITY MODE INTRINSIC_MODES EXTRINSIC_MODES
-%token SUBKIND PHASE ROLE RELATOR
+%token FUNCTIONAL_COMPLEXES SUBKIND PHASE ROLE RELATOR RELATORS 
 
+/* Palavras reservadas */
+%token RELATION PACKAGE IMPORT OF DATA_TYPE ENUM SPECIALIZES
+
+/* Generalizações */
+%token GENSET DISJOINT COMPLETE OVERLAPPING INCOMPLETE GENERAL SPECIFICS WHERE
+
+/* Tipos primitivos */
+%token NUMBER STRING BOOLEAN DATE TIME DATETIME
+
+/* Meta atributos */
+%token ORDERED CONST DERIVED SUBSETS REDEFINES
+
+/* Estereótipos de relação */
 %token MATERIAL DERIVATION COMPARATIVE MEDIATION
 %token CHARACTERIZATION EXTERNAL_DEPENDENCE COMPONENT_OF
 %token MEMBER_OF SUB_COLLECTION_OF SUB_QUALITY_OF
@@ -94,29 +100,29 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 %token BRINGS_ABOUT TRIGGERS COMPOSITION AGGREGATION
 %token INHERENCE VALUE FORMAL CONSTITUTION 
 
-%token <symb> NUMBER_LITERAL 
-%token SPECIAL_SYMBOL DATA_TYPE
-%token <symb> INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME ATTR_NAME 
+/* Operadores relacionais */
+%token DASH AGGREGATION_OP COMPOSITION_OP
 
-%token UNKNOWN
-
+/* Símbolos especiais */
 %token OPEN_BRACES CLOSE_BRACES OPEN_PARENTHESES CLOSE_PARENTHESES COLON COMMA AT DOT
 
-%token RELATION_KW 
-%token <symb> CARDINALITY 
-%token DASH AGGREGATION_OP COMPOSITION_OP
-%token ENUM SPECIALIZES
+/* Construtors, cardinalidade e números */
+%token <symb> NUMBER_LITERAL CARDINALITY INSTANCE_NAME NEW_TYPE CLASS_NAME RELATION_NAME PACKAGE_NAME
 
+/* IDK */
+%token UNKNOWN
+
+
+/* Regras que retorna um tipo de dado específico */
 %type <str> class_stereotype relation_type opt_at_stereotype genset_modifier data_type 
 
 %type <integer> relation_operator
 
-%type <connectors> rel_connector 
+%type <connector> rel_connector 
 
 %type <gensetMods> genset_modifiers opt_inner_genset_modifiers
 
-%type <symb> datatype_name identifier package_name genset_name enum_member attr_name opt_cardinality
-%type <symb> domain_class rel_ident opt_rel_alias
+%type <symb> datatype_name identifier package_name enum_member attr_name opt_cardinality rel_ident opt_rel_alias
 
 
 %start program
@@ -138,6 +144,8 @@ package_unit:
     opt_imports package_decl declarations
 ;
 
+/* Importações */
+
 opt_imports:
     %empty
     | opt_imports import_stmt
@@ -152,45 +160,44 @@ import_path:
     | identifier DOT identifier
 ;
 
+identifier:
+    CLASS_NAME    { $$ = $1; }
+    | RELATION_NAME { $$ = $1; }
+    | NEW_TYPE    { $$ = $1; }
+;
+
+/* Declaração de pacotes */
+
 package_kw: 
     PACKAGE { contextoAtual = TipoErro::PACOTE; }
 ;
 
+package_name:
+    PACKAGE_NAME { $$ = $1; }
+;
+
 package_decl:
     package_kw package_name {
-        partialSymbol* pkgName = $2;
-        string name = pkgName->str;
+        partialSymbol* pkg = $2;
+        string name = pkg->str;
 
         currentScope->setScopeName("package " + name);
-        currentScope->put("package " + name, new symbol(
-            (yytokentype)pkgName->type,
+        currentScope->put("package " + name, new Symbol(
+            pkg->str,
+            SymbolCategory::PACKAGE,
             "package",
-            pkgName->str,
-            pkgName->line,
-            pkgName->start,
-            pkgName->end,
+            pkg->line,
+            pkg->start,
+            pkg->end,
             currentScope->getScopeName()
         ));
 
-        cout << "Declaração de pacote: " << pkgName->str << ", linha: " << pkgName->line << "\n";
+        cout << "Declaração de pacote: " << pkg->str << ", linha: " << pkg->line << "\n";
 
         contextoAtual = TipoErro::PACOTE;
 
-        destroyPartialSymbol(pkgName);
+        destroyPartialSymbol(pkg);
     }
-;
-
-package_name:
-    CLASS_NAME    { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
-    | ATTR_NAME   { $$ = $1; }
-;
-
-identifier:
-    CLASS_NAME    { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
-    | ATTR_NAME   { $$ = $1; }
-    | NEW_TYPE    { $$ = $1; }
 ;
 
 /* Declarações posteriores ao pacote */
@@ -211,9 +218,7 @@ declaration:
 /* 2. Declaração de Classes */
 
 class_decl:
-    class_header opt_class_body {
-        exitScope();
-    }
+    class_header opt_class_body { exitScope(); }
 ;
 
 class_header:
@@ -221,7 +226,7 @@ class_header:
         partialSymbol* className = $2;
         string stereotype = ($1 ? $1 : "");
 
-        symbol* existing = currentScope->getLocal(className->str);
+        Symbol* existing = currentScope->getLocal(className->str);
         if (existing != nullptr && existing->name == className->str) {
             cerr << "Erro semântico [Linha " << existing->line << ", " 
                  << " Coluna " << existing->columnStart << " a " << existing->columnEnd
@@ -229,10 +234,10 @@ class_header:
                  << currentScope->getScopeName() << ".\n";
         } else {
 
-            currentScope->put(string(className->str), new symbol(
-                (yytokentype)className->type, 
-                "Class", 
+            currentScope->put(string(className->str), new Symbol(
                 className->str, 
+                SymbolCategory::CLASS, 
+                "Classe", 
                 className->line,
                 className->start,
                 className->end, 
@@ -259,8 +264,6 @@ meta_stereotype:
     | RELATORS
     | INTRINSIC_MODES
     | EXTRINSIC_MODES
-    | CLASS_NAME
-    | RELATION_NAME
 ;
 
 opt_class_body:
@@ -334,11 +337,12 @@ class_stereotype:
 /* 2.1. Declaração de Atributos */
 
 attribute:
-    attr_name COLON data_type opt_attribute_modifiers {
+    attr_name COLON data_type opt_cardinality opt_attribute_modifiers {
         contextoAtual = TipoErro::ATRIBUTO;
 
         partialSymbol* attrName = $1;
-        string typeName = ($3 ? $3 : "");
+        partialSymbol* optCardinalidade = $4;
+        string typeName = ($3 != nullptr ? $3 : "");
 
         if (currentScope->getLocal(string(attrName->str)) != nullptr) {
             cerr << "Erro semântico [Linha " << attrName->line 
@@ -347,9 +351,9 @@ attribute:
                  << currentScope->getScopeName() << ".\n";
         } else {
 
-            currentScope->put(string(attrName->str), new symbol(
-                (yytokentype)attrName->type, 
-                "Attribute", 
+            currentScope->put(string(attrName->str), new Symbol(
+                attrName->str, 
+                SymbolCategory::ATTRIBUTE, 
                 typeName, 
                 attrName->line, 
                 attrName->start,
@@ -357,28 +361,31 @@ attribute:
                 currentScope->getScopeName()
             ));
 
+            if (optCardinalidade != nullptr) {
+                currentScope->put(string(optCardinalidade->str), new Symbol(
+                    optCardinalidade->str,
+                    SymbolCategory::CARDINALITY,
+                    attrName->str,
+                    optCardinalidade->line,
+                    optCardinalidade->start,
+                    optCardinalidade->end,
+                    currentScope->getScopeName()
+                ));
+
+                destroyPartialSymbol(optCardinalidade);
+            }
+
             cout << "Declaração de atributo: " << attrName->str << ", linha: " << attrName->line << "\n";
         }
 
         free($3);
+        destroyPartialSymbol(optCardinalidade);
         destroyPartialSymbol(attrName);
     }
 ;
 
 attr_name:
-    RELATION_NAME  { $$ = $1; }
-    | INSTANCE_NAME   { $$ = $1; }
-    | CLASS_NAME  { $$ = $1; }
-;
-
-data_type:
-    NUMBER        { $$ = strdup("number"); }
-  | STRING        { $$ = strdup("string"); }
-  | BOOLEAN       { $$ = strdup("boolean"); }
-  | DATE          { $$ = strdup("date"); }
-  | TIME          { $$ = strdup("time"); }
-  | DATETIME      { $$ = strdup("datetime"); }
-  | NEW_TYPE      { $$ = strdup($1->str); destroyPartialSymbol($1); }
+    INSTANCE_NAME   { $$ = $1; }
 ;
 
 opt_attribute_modifiers:
@@ -401,8 +408,43 @@ modifier_item:
 
 /* 3. Tipos de Dados Complexos (Datatype) */
 
+data_type:
+    NUMBER        { $$ = strdup("number"); }
+  | STRING        { $$ = strdup("string"); }
+  | BOOLEAN       { $$ = strdup("boolean"); }
+  | DATE          { $$ = strdup("date"); }
+  | TIME          { $$ = strdup("time"); }
+  | DATETIME      { $$ = strdup("datetime"); }
+  | NEW_TYPE { 
+        Symbol* symb = currentScope->get($1->str);
+
+        if (symb == nullptr) {
+            cerr << "Erro em: [Linha " << $1->line 
+                 << ", Coluna " << $1->start << " a " << $1->end
+                 << "]. Tipo: '" << $1->str << "' referenciado não foi declarado.\n";
+        } else {
+            $$ = strdup($1->str);
+        }
+
+        destroyPartialSymbol($1); 
+    }
+;
+
 data_type_kw:
     DATA_TYPE { contextoAtual = TipoErro::DATA_TYPE; }
+;
+
+datatype_name:
+    NEW_TYPE { $$ = $1; }
+;
+
+opt_datatype_attributes:
+    %empty 
+    | opt_datatype_attributes opt_datatype_attribute opt_attribute_modifiers
+;
+
+opt_datatype_attribute:
+    INSTANCE_NAME COLON data_type
 ;
 
 data_type_decl:
@@ -415,10 +457,10 @@ data_type_decl:
                  << "]: Tipo de dados '" << dtName->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(string(dtName->str), new symbol(
-                (yytokentype)dtName->type, 
-                "Data type", 
+            currentScope->put(string(dtName->str), new Symbol(
                 dtName->str, 
+                SymbolCategory::DATATYPE, 
+                "Novo tipo de dado", 
                 dtName->line, 
                 dtName->start,
                 dtName->end, 
@@ -434,17 +476,6 @@ data_type_decl:
     } OPEN_BRACES opt_datatype_attributes CLOSE_BRACES {
         exitScope();
     }
-;
-
-datatype_name:
-    NEW_TYPE      { $$ = $1; }
-    | CLASS_NAME  { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
-;
-
-opt_datatype_attributes:
-    %empty 
-    | opt_datatype_attributes attribute opt_attribute_modifiers
 ;
 
 /* 4. Classes Enumeradas (Enum) */
@@ -463,10 +494,10 @@ enum_decl:
                  << "]: Enum '" << enumName->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(enumName->str, new symbol(
-                (yytokentype)enumName->type,
-                "Enum", 
+            currentScope->put(enumName->str, new Symbol(
                 enumName->str, 
+                SymbolCategory::ENUM,
+                "Enum", 
                 enumName->line, 
                 enumName->start, 
                 enumName->end, 
@@ -490,10 +521,10 @@ enum_members:
     enum_member {
         partialSymbol* member = $1;
 
-        currentScope->put(member->str, new symbol(
-            (yytokentype)member->type,
-            "Enum_member", 
+        currentScope->put(member->str, new Symbol(
             member->str, 
+            SymbolCategory::CLASS,
+            "Membro de enum", 
             member->line, 
             member->start, 
             member->end,
@@ -507,10 +538,10 @@ enum_members:
     | enum_members COMMA enum_member {
         partialSymbol* member = $3;
 
-        currentScope->put(member->str, new symbol(
-            (yytokentype)member->type,
-            "Enum_member", 
+        currentScope->put(member->str, new Symbol(
             member->str, 
+            SymbolCategory::CLASS,
+            "Membro de enum", 
             member->line, 
             member->start, 
             member->end,
@@ -525,13 +556,12 @@ enum_members:
 
 enum_member:
     CLASS_NAME     { $$ = $1; }
-    /* Somente nome de classes */
 ;
 
 /* 5. Conjuntos de Generalizações (Genset) */
 
 generalization_decl:
-    genset_modifiers GENSET genset_name WHERE class_list SPECIALIZES CLASS_NAME {
+    genset_modifiers GENSET CLASS_NAME WHERE class_list SPECIALIZES CLASS_NAME {
         vector<string>* gensetMods = $1;
 
         string mods = "";
@@ -552,10 +582,10 @@ generalization_decl:
                  << "]: Genset '" << gname->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(gname->str, new symbol(
-                (yytokentype)gname->type,
-                mods, 
+            currentScope->put(gname->str, new Symbol(
                 gname->str, 
+                SymbolCategory::GENSET,
+                mods, 
                 gname->line, 
                 gname->start,
                 gname->end, 
@@ -573,7 +603,7 @@ generalization_decl:
         destroyPartialSymbol(gname);
         destroyPartialSymbol(baseClass);
     }
-    | genset_modifiers GENSET genset_name OPEN_BRACES genset_body CLOSE_BRACES {
+    | genset_modifiers GENSET CLASS_NAME OPEN_BRACES genset_body CLOSE_BRACES {
         vector<string>* gensetMods = $1;
 
         string mods = "";
@@ -594,10 +624,10 @@ generalization_decl:
                  << "]: Genset '" << genName->str << "' já declarado no escopo " 
                  << currentScope->getScopeName() << ".\n";
         } else {
-            currentScope->put(genName->str, new symbol(
-                (yytokentype)genName->type, 
-                mods, 
+            currentScope->put(genName->str, new Symbol(
                 genName->str, 
+                SymbolCategory::GENSET, 
+                mods, 
                 genName->line, 
                 genName->start,
                 genName->end, 
@@ -610,11 +640,6 @@ generalization_decl:
         destroyPartialSymbol(genName);
         delete gensetMods;
     }
-;
-
-genset_name:
-    CLASS_NAME    { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
 ;
 
 genset_modifiers:
@@ -679,7 +704,7 @@ internal_rel:
         if ($3 != nullptr) {
             string relType = ($1 != nullptr ? $1 : "relation");
 
-            relationalConectors* relationC = $3;
+            relationalConector* relationC = $3;
             int relationType = relationC->left;
 
             partialSymbol* className = $5;
@@ -688,10 +713,10 @@ internal_rel:
             if (relationC->middle == nullptr) {
                 relName = "relação sem nome";
 
-                currentScope->put(relName, new symbol(
-                    (yytokentype)relationType, 
-                    "Internal relation", 
+                currentScope->put(relName, new Symbol(
                     relName, 
+                    SymbolCategory::RELATION, 
+                    "Internal relation", 
                     className->line, 
                     className->start,
                     className->end, 
@@ -700,13 +725,13 @@ internal_rel:
             } else {
                 relName = relationC->middle->str;
 
-                currentScope->put(relName, new symbol(
-                    (yytokentype)relationType, 
-                    "Internal relation", 
+                currentScope->put(relName, new Symbol(
                     relName, 
-                    className->line, 
-                    className->start,
-                    className->end, 
+                    SymbolCategory::RELATION, 
+                    "Internal relation", 
+                    relationC->middle->line, 
+                    relationC->middle->start,
+                    relationC->middle->end, 
                     currentScope->getScopeName()
                 ));
 
@@ -724,22 +749,22 @@ internal_rel:
 ;
 
 external_rel:
-    opt_at_stereotype RELATION_KW domain_class opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
+    opt_at_stereotype RELATION CLASS_NAME opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
         string relType = ($1 != nullptr ? $1 : "relation");
 
         partialSymbol* className = $3;
 
-        relationalConectors* relationC = $5;
+        relationalConector* relationC = $5;
         int relationType = relationC->left;
         string relName;
 
         if (relationC->middle == nullptr){
             relName = "Relação externa sem nome";
 
-            currentScope->put(relName, new symbol(
-                (yytokentype)relationType, 
-                "External relation",
+            currentScope->put(relName, new Symbol(
                 relName, 
+                SymbolCategory::RELATION, 
+                "External relation",
                 className->line, 
                 className->start, 
                 className->end, 
@@ -748,10 +773,10 @@ external_rel:
         } else {
             relName = relationC->middle->str;
 
-            currentScope->put(relName, new symbol(
-                (yytokentype)relationType, 
-                "External relation",
+            currentScope->put(relName, new Symbol(
                 relName, 
+                SymbolCategory::RELATION, 
+                "External relation",
                 className->line, 
                 className->start, 
                 className->end, 
@@ -768,20 +793,16 @@ external_rel:
     }
 ;
 
-domain_class:
-    CLASS_NAME { $$ = $1; }
-    | RELATION_NAME { $$ = $1; }
-;
 
 rel_connector:
     relation_operator { 
-        $$ = new relationalConectors();
+        $$ = new relationalConector();
         $$->left = $1;
         $$->middle = nullptr;
         $$->right = 0;
     }
     | relation_operator rel_ident relation_operator { 
-        $$ = new relationalConectors(); 
+        $$ = new relationalConector(); 
         $$->left = $1;
         $$->middle = $2;
         $$->right = $3;
@@ -790,7 +811,6 @@ rel_connector:
 
 rel_ident:
     RELATION_NAME { $$ = $1; }
-    | CLASS_NAME  { $$ = $1; }
 ;
 
 opt_rel_alias:

@@ -2,7 +2,7 @@
 
 ## Fase 2 — Análise Sintática
 
-Projeto da disciplina de Compiladores (UFERSA) para a criação de um compilador em C++, utilizando Flex e Bison para a "Textual Ontology Language" (TONTO).
+Projeto da disciplina de Compiladores (UFERSA) para a criação de um compilador em C++, utilizando Flex e Bison para uma variação da "Textual Ontology Language" (TONTO).
 
 ## Sobre o Projeto
 
@@ -62,6 +62,9 @@ A estrutura do projeto está organizada da seguinte forma:
     │   └── Symbol.h            (Definição de um símbolo do compilador)
     │
     └── README.md                (Este arquivo)
+
+## Especificações sobre a linguagem
+O compilador desenvolvido não é capaz de rodar um código em linguagem TONTO original, mas uma versão modificada desta.
 
 ## Como Compilar e Rodar
 
