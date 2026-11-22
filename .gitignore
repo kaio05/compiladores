@@ -1,17 +1,16 @@
 exemplos
 teste
 
-analizador_lexico/lex.yy.cc
-analizador_lexico/lex.yy.c
-analizador_lexico/lexer
+analisador_lexico/lex.yy.cc
+analisador_lexico/lex.yy.c
+analisador_lexico/lexer
 
-analizador_sintatico/parser.tab.h
-analizador_sintatico/parser.tab.c
-analizador_sintatico/parser
+analisador_sintatico/parser.tab.h
+analisador_sintatico/parser.tab.c
+analisador_sintatico/parser
 
-compiler
-analizador_sintatico/parser.exe
-analizador_sintatico/*.o
+analisador_sintatico/parser.exe
+analisador_sintatico/*.o
 
 **/*.o
 

@@ -2,7 +2,6 @@
 #define RELATORIO_H
 
 #include <string>
-#include <vector>
 
 enum class TipoErro {
     PACOTE,

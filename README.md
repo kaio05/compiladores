@@ -66,6 +66,13 @@ A estrutura do projeto está organizada da seguinte forma:
 ## Especificações sobre a linguagem
 O compilador desenvolvido não é capaz de rodar um código em linguagem TONTO original, mas uma versão modificada desta.
 
+* Declaração de pacotes: Qualquer sequência de letras terminando com "Package";
+* Declaração de tipos: Qualquer sequência de letras terminando com "DataType";
+* Declaração de instancias: Inicia-se com uma letra e, posteriormente, qualquer sequência de letras ou numeros;
+* Declaração de atributos: Inicia-se com uma letra maiúscula seguida de um "-", depois qualquer sequência de letras ou hiféns (-);
+* Declaração de classes: Começa com uma letra maiúscula seguida de qualquer combinação de letras ou "_";
+* Declaração de relação: Começa com uma letra minúscula seguida de qualquer combinação de letras ou "_";
+
 ## Como Compilar e Rodar
 
 ### 1. Dependências Necessárias

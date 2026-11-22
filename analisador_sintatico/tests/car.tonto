@@ -1,4 +1,4 @@
-package CarOwnership 
+package CarOwnershipPackage
 
 kind Organization
 subkind CarAgency specializes Organization

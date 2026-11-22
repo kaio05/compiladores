@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <FlexLexer.h>
 #include "Token.h"
-#include "../analizador_sintatico/parser.tab.h"
+#include "../analisador_sintatico/parser.tab.h"
 
 // ------------------------------------------------------------------------------
 

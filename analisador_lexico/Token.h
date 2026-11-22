@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 #include <string>
-#include "../analizador_sintatico/parser.tab.h"
+#include "../analisador_sintatico/parser.tab.h"
 
 // ------------------------------------------------------------------------------
 

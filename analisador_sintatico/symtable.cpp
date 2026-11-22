@@ -37,7 +37,7 @@ std::string Symbol::toString() const {
         ss << " : " << type;
     }
     if (line > 0) {
-        ss << " (line: " << line << ", column start: " << columnStart << ", column end:" << columnEnd << ")";
+        ss << " (linha: " << line << ", coluna inicial: " << columnStart << ", coluna final:" << columnEnd << ")";
     }
     return ss.str();
 }

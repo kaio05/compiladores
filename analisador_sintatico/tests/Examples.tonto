@@ -1,15 +1,15 @@
 package MyPackage
 
 kind Person {
-    name0: string
-    birthDate0: date {const}
+    Name-: string
+    Birth-Date: date {const}
 }
 
 phase Child specializes Person
 
 datatype AddressDataType {
-    street1: string
-    addrNumber1: intDataType
+    Street-: string
+    Addr-Number: intDataType
 }
 
 enum EyeColor { Blue, Green, Brown, Black }

@@ -1,5 +1,5 @@
 %{
-#include "../analizador_sintatico/parser.tab.h"
+#include "../analisador_sintatico/parser.tab.h"
 
 int yycolumnStart = 1;
 int yycolumnEnd = 1;
@@ -30,9 +30,10 @@ comment             (\/\/.*)
 digit               [0-9]
 number              {digit}+(\.{digit}+)?(E[+-]?{digit}+)?
 letter              [A-Za-z]
-instanceName        ({letter})+({digit})+
 packageName         ({letter})+("Package")
 newType             ({letter})+("DataType")
+instanceName        ({letter})+({digit})+
+attributeName       [A-Z]{letter}*-({letter}|-)*
 className           [A-Z]({letter}|_)*
 relationName        [a-z]({letter}|_)*
 cardinality         \[([0-9]+|\*|[0-9]+\.\.([0-9]+|\*))\]
@@ -137,12 +138,13 @@ constitution            return CONSTITUTION;
 "."                     return DOT;
 
 {number}                { yylval.symb = new partialSymbol(NUMBER_LITERAL, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NUMBER_LITERAL; }
-{cardinality}           { yylval.symb = new partialSymbol(CARDINALITY, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CARDINALITY; }
-{instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
 {packageName}           { yylval.symb = new partialSymbol(PACKAGE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return PACKAGE_NAME; }
 {newType}               { yylval.symb = new partialSymbol(NEW_TYPE, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NEW_TYPE; }
+{attributeName}         { yylval.symb = new partialSymbol(ATTRIBUTE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return ATTRIBUTE_NAME; } 
+{instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
 {className}             { yylval.symb = new partialSymbol(CLASS_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CLASS_NAME; }
 {relationName}          { yylval.symb = new partialSymbol(RELATION_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return RELATION_NAME; }
+{cardinality}           { yylval.symb = new partialSymbol(CARDINALITY, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CARDINALITY; }
 
 .                       return UNKNOWN;
 
