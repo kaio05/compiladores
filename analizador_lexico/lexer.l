@@ -139,10 +139,10 @@ constitution            return CONSTITUTION;
 {number}                { yylval.symb = new partialSymbol(NUMBER_LITERAL, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NUMBER_LITERAL; }
 {cardinality}           { yylval.symb = new partialSymbol(CARDINALITY, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CARDINALITY; }
 {instanceName}          { yylval.symb = new partialSymbol(INSTANCE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return INSTANCE_NAME; }
+{packageName}           { yylval.symb = new partialSymbol(PACKAGE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return PACKAGE_NAME; }
 {newType}               { yylval.symb = new partialSymbol(NEW_TYPE, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return NEW_TYPE; }
 {className}             { yylval.symb = new partialSymbol(CLASS_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return CLASS_NAME; }
 {relationName}          { yylval.symb = new partialSymbol(RELATION_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return RELATION_NAME; }
-{packageName}           { yylval.symb = new partialSymbol(PACKAGE_NAME, strdup(yytext), yylineno, yycolumnStart, yycolumnEnd); return PACKAGE_NAME; }
 
 .                       return UNKNOWN;
 

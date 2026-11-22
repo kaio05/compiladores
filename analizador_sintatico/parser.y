@@ -122,7 +122,7 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 
 %type <gensetMods> genset_modifiers opt_inner_genset_modifiers
 
-%type <symb> datatype_name identifier package_name enum_member attr_name opt_cardinality rel_ident opt_rel_alias
+%type <symb> datatype_name identifier enum_member attr_name opt_cardinality rel_ident opt_rel_alias
 
 
 %start program
@@ -172,12 +172,9 @@ package_kw:
     PACKAGE { contextoAtual = TipoErro::PACOTE; }
 ;
 
-package_name:
-    PACKAGE_NAME { $$ = $1; }
-;
 
 package_decl:
-    package_kw package_name {
+    package_kw PACKAGE_NAME {
         partialSymbol* pkg = $2;
         string name = pkg->str;
 
