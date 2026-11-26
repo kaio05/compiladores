@@ -1,6 +1,7 @@
 %code requires{
     #include <string>
     #include <vector>
+    #include "ast.h"
 
     using namespace std;
 
@@ -26,6 +27,9 @@
 #include "symtable.h"
 #include "relatorio.h"
 #include "../analisador_lexico/AnalisadorLexico.h"
+
+ProgramNode* root = new ProgramNode();
+ClassNode* currentClass = nullptr;
 
 int yylex();
 int yyparse();
@@ -68,6 +72,20 @@ TipoErro contextoAtual = TipoErro::GENERICO;
     relationalConector* connector;
     char* str;
     int integer;
+
+    ProgramNode* program;
+    PackageNode* package;
+    ClassNode* classNode;
+    GensetNode* genset;
+    RelationNode* relation;
+
+    ClassStereotype classStereotype;
+    RelationStereotype relationStereotype;
+
+    vector<string>* stringList;
+    vector<GensetModifier>* gensetModifiers;
+    GensetModifier gensetModifier;
+    GensetBody* gensetBody;
 }
 
 /* Tokens das palavras reservadas e dos estereótipos. */
@@ -114,16 +132,27 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 
 
 /* Regras que retorna um tipo de dado específico */
-%type <str> class_stereotype relation_type opt_at_stereotype genset_modifier data_type 
+%type <program> program package_units package_unit
+%type <package> package_decl
+
+%type <classNode> class_decl class_header
+%type <genset> genset_decl
+%type <relation> internal_rel external_rel
+
+%type <stringList> opt_specializes class_list
+%type <gensetModifiers> genset_modifiers
+%type <gensetModifier> genset_modifier
+%type <gensetBody> genset_body
+
+%type <symb> datatype_name identifier enum_member opt_cardinality rel_ident opt_rel_alias import_path
 
 %type <integer> relation_operator
-
 %type <connector> rel_connector 
 
-%type <list> genset_modifiers
+%type <classStereotype> class_stereotype
+%type <relationStereotype> relation_type opt_at_stereotype
 
-%type <symb> datatype_name identifier enum_member opt_cardinality rel_ident opt_rel_alias
-
+%type <str> data_type meta_stereotype opt_meta_stereotype
 
 %start program
 
@@ -132,7 +161,7 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 /* 1. Programa e Pacotes */
 
 program:
-    package_units
+    package_units { $$ = root; }
 ;
 
 package_units:
@@ -142,6 +171,9 @@ package_units:
 
 package_unit:
     opt_imports package_decl declarations
+    {
+        root->package = $2;
+    }
 ;
 
 /* Importações */
@@ -153,6 +185,15 @@ opt_imports:
 
 import_stmt:
     IMPORT import_path
+    {
+        PackageNode* node = new PackageNode();
+
+        node->name = $2->str;
+        node->lineStart = $2->line;
+        node->lineEnd = $2->line;
+
+        root->imports.emplace_back(node);
+    }
 ;
 
 import_path:
@@ -177,6 +218,14 @@ package_decl:
         partialSymbol* pkg = $2;
         string pkgName = pkg->str;
 
+        PackageNode* node = new PackageNode();
+
+        node->name = pkg->str;
+        node->lineStart = pkg->line;
+        node->lineEnd = pkg->line;
+
+        root->package = node;
+
         currentScope->setScopeName("package " + pkgName);
         currentScope->put("package " + pkgName, new Symbol(
             pkgName,
@@ -193,6 +242,8 @@ package_decl:
         contextoAtual = TipoErro::PACOTE;
 
         destroyPartialSymbol(pkg);
+
+        $$ = node;
     }
 ;
 
@@ -204,17 +255,25 @@ declarations:
 ;
 
 declaration:
-    class_decl           
-    | data_type_decl     
-    | enum_decl          
-    | generalization_decl
-    | external_rel       
+    class_decl      
+    | data_type_decl
+    | enum_decl
+    | genset_decl
+    | external_rel
 ;
 
 /* 2. Declaração de Classes */
 
 class_decl:
-    class_header opt_class_body { exitScope(); }
+    class_header opt_class_body { 
+        exitScope(); 
+        
+        currentClass = new ClassNode();
+
+        root->package->classes.emplace_back($1);
+
+        $$ = $1;
+    }
 ;
 
 class_header:
@@ -231,7 +290,20 @@ class_header:
                  << currentScope->getScopeName() << ".\n";
 
         } else {
+            // Criação do nó da AST
+            ClassNode* node = new ClassNode();
 
+            node->name = className->str;
+            node->lineStart = className->line;
+            node->lineEnd = className->line;
+
+            node->superclasses = move(*$4);
+
+            node->stereotype = $1;
+
+            $$ = node;
+            
+            // Inserção na tabela de símbolos
             currentScope->put(string(className->str), new Symbol(
                 className->str, 
                 SymbolCategory::CLASS, 
@@ -252,16 +324,16 @@ class_header:
 ;
 
 opt_meta_stereotype:
-    %empty
-    | OF meta_stereotype
+    %empty { $$ = nullptr; }
+    | OF meta_stereotype { $$ = $2; }
 ;
 
 meta_stereotype:
-    FUNCTIONAL_COMPLEXES
-    | RELATOR
-    | RELATORS
-    | INTRINSIC_MODES
-    | EXTRINSIC_MODES
+    FUNCTIONAL_COMPLEXES {$$ = (char*)"functionalComplexes";}
+    | RELATOR {$$ = (char*)"relator";}
+    | RELATORS {$$ = (char*)"relators";}
+    | INTRINSIC_MODES {$$ = (char*)"intrinsicModes";}
+    | EXTRINSIC_MODES {$$ = (char*)"extrinsicModes";}
 ;
 
 opt_class_body:
@@ -280,8 +352,8 @@ class_element:
 ;
 
 opt_specializes:
-    %empty
-    | SPECIALIZES class_list
+    %empty { $$ = new vector<string>(); }
+    | SPECIALIZES class_list { $$ = $2; }
 ;
 
 class_list:
@@ -295,6 +367,8 @@ class_list:
                  << "]. Classe base: '" << baseClass->str << "' referenciada ainda não foi encontrada no escopo.\n";
         }
 
+        $$ = new vector<string>();
+        $$->push_back(baseClass->str);
         destroyPartialSymbol(baseClass);
     }
     | class_list COMMA CLASS_NAME {
@@ -305,32 +379,34 @@ class_list:
                  << "]. Classe base: '" << baseClass->str << "' referenciada ainda não foi encontrada no escopo.\n";
         }
 
+        $$ = $1;
+        $$->push_back(baseClass->str);
         destroyPartialSymbol(baseClass);
     }
 ;
 
 class_stereotype:
-    EVENT                  { $$ = (char*)"event"; contextoAtual = TipoErro::CLASSE; }
-  | SITUATION              { $$ = (char*)"situation"; contextoAtual = TipoErro::CLASSE; }
-  | PROCESS                { $$ = (char*)"process"; contextoAtual = TipoErro::CLASSE; }
-  | CATEGORY               { $$ = (char*)"category"; contextoAtual = TipoErro::CLASSE; }
-  | MIXIN                  { $$ = (char*)"mixin"; contextoAtual = TipoErro::CLASSE; }
-  | PHASE_MIXIN            { $$ = (char*)"phaseMixin"; contextoAtual = TipoErro::CLASSE; }
-  | ROLE_MIXIN             { $$ = (char*)"roleMixin"; contextoAtual = TipoErro::CLASSE; }
-  | HISTORICAL_MIXIN       { $$ = (char*)"historicalMixin"; contextoAtual = TipoErro::CLASSE; }
-  | HISTORICAL_ROLE        { $$ = (char*)"historicalRole"; contextoAtual = TipoErro::CLASSE; }
-  | HISTORICAL_ROLE_MIXIN  { $$ = (char*)"historicalRoleMixin"; contextoAtual = TipoErro::CLASSE; }
-  | KIND                   { $$ = (char*)"kind"; contextoAtual = TipoErro::CLASSE; }
-  | COLLECTIVE             { $$ = (char*)"collective"; contextoAtual = TipoErro::CLASSE; }
-  | QUANTITY               { $$ = (char*)"quantity"; contextoAtual = TipoErro::CLASSE; }
-  | QUALITY                { $$ = (char*)"quality"; contextoAtual = TipoErro::CLASSE; }
-  | MODE                   { $$ = (char*)"mode"; contextoAtual = TipoErro::CLASSE; }
-  | INTRINSIC_MODES        { $$ = (char*)"intrinsic-modes"; contextoAtual = TipoErro::CLASSE; }
-  | EXTRINSIC_MODES        { $$ = (char*)"extrinsic-modes"; contextoAtual = TipoErro::CLASSE; }
-  | SUBKIND                { $$ = (char*)"subkind"; contextoAtual = TipoErro::CLASSE; }
-  | PHASE                  { $$ = (char*)"phase"; contextoAtual = TipoErro::CLASSE; }
-  | ROLE                   { $$ = (char*)"role"; contextoAtual = TipoErro::CLASSE; }
-  | RELATOR                { $$ = (char*)"relator"; contextoAtual = TipoErro::CLASSE; }
+    EVENT                  { $$ = ClassStereotype::EVENT; contextoAtual = TipoErro::CLASSE; }
+  | SITUATION              { $$ = ClassStereotype::SITUATION; contextoAtual = TipoErro::CLASSE; }
+  | PROCESS                { $$ = ClassStereotype::PROCESS; contextoAtual = TipoErro::CLASSE; }
+  | CATEGORY               { $$ = ClassStereotype::CATEGORY; contextoAtual = TipoErro::CLASSE; }
+  | MIXIN                  { $$ = ClassStereotype::MIXIN; contextoAtual = TipoErro::CLASSE; }
+  | PHASE_MIXIN            { $$ = ClassStereotype::PHASE_MIXIN; contextoAtual = TipoErro::CLASSE; }
+  | ROLE_MIXIN             { $$ = ClassStereotype::ROLE_MIXIN; contextoAtual = TipoErro::CLASSE; }
+  | HISTORICAL_MIXIN       { $$ = ClassStereotype::HISTORICAL_MIXIN; contextoAtual = TipoErro::CLASSE; }
+  | HISTORICAL_ROLE        { $$ = ClassStereotype::HISTORICAL_ROLE; contextoAtual = TipoErro::CLASSE; }
+  | HISTORICAL_ROLE_MIXIN  { $$ = ClassStereotype::HISTORICAL_ROLE_MIXIN; contextoAtual = TipoErro::CLASSE; }
+  | KIND                   { $$ = ClassStereotype::KIND; contextoAtual = TipoErro::CLASSE; }
+  | COLLECTIVE             { $$ = ClassStereotype::COLLECTIVE; contextoAtual = TipoErro::CLASSE; }
+  | QUANTITY               { $$ = ClassStereotype::QUANTITY; contextoAtual = TipoErro::CLASSE; }
+  | QUALITY                { $$ = ClassStereotype::QUALITY; contextoAtual = TipoErro::CLASSE; }
+  | MODE                   { $$ = ClassStereotype::MODE; contextoAtual = TipoErro::CLASSE; }
+  | INTRINSIC_MODES        { $$ = ClassStereotype::INTRINSIC_MODES; contextoAtual = TipoErro::CLASSE; }
+  | EXTRINSIC_MODES        { $$ = ClassStereotype::EXTRINSIC_MODES; contextoAtual = TipoErro::CLASSE; }
+  | SUBKIND                { $$ = ClassStereotype::SUBKIND; contextoAtual = TipoErro::CLASSE; }
+  | PHASE                  { $$ = ClassStereotype::PHASE; contextoAtual = TipoErro::CLASSE; }
+  | ROLE                   { $$ = ClassStereotype::ROLE; contextoAtual = TipoErro::CLASSE; }
+  | RELATOR                { $$ = ClassStereotype::RELATOR; contextoAtual = TipoErro::CLASSE; }
 ;
 
 /* 2.1. Declaração de Atributos */
@@ -540,31 +616,39 @@ enum_member:
 
 genset_modifiers:
     %empty { 
-        $$ = new vector<string>(); 
+        $$ = new vector<GensetModifier>(); 
         contextoAtual = TipoErro::GENSET;
     }
     | genset_modifiers genset_modifier { 
         $$ = $1;
         $$->push_back($2);
-        free($2);
         contextoAtual = TipoErro::GENSET;
     }
 ;
 
 genset_modifier:
-    DISJOINT { $$ = strdup("disjoint"); }
-    | COMPLETE { $$ = strdup("complete"); }
-    | OVERLAPPING { $$ = strdup("overlapping"); }
-    | INCOMPLETE { $$ = strdup("incomplete"); }
+    DISJOINT { $$ = GensetModifier::DISJOINT; }
+    | COMPLETE { $$ = GensetModifier::COMPLETE; }
+    | OVERLAPPING { $$ = GensetModifier::OVERLAPPING; }
+    | INCOMPLETE { $$ = GensetModifier::INCOMPLETE; }
 ;
 
-generalization_decl:
+genset_decl:
     genset_modifiers GENSET CLASS_NAME WHERE class_list SPECIALIZES CLASS_NAME {
 
-        vector<string>* gensetMods = $1;
+        vector<GensetModifier>* gensetMods = $1;
         partialSymbol* newGenset = $3;
         partialSymbol* baseClass = $7;
 
+        GensetNode* node = new GensetNode();
+
+        node->name = newGenset->str;
+        node->modifiers = move(*gensetMods);
+
+        node->general = $3->str;
+        node->specifics = $5;
+
+        root->package->gensets.emplace_back(node);
 
         if (currentScope->get(baseClass->str) == nullptr) {
             cerr << "Aviso semântico [Linha " << baseClass->line
@@ -592,10 +676,14 @@ generalization_decl:
 
         destroyPartialSymbol(newGenset);
         destroyPartialSymbol(baseClass);
+
+        delete $1;
+
+        $$ = node;
     }
     | genset_modifiers GENSET CLASS_NAME OPEN_BRACES genset_body CLOSE_BRACES {
 
-        vector<string>* gensetModifiers = $1;
+        vector<GensetModifier>* gensetModifiers = $1;
         partialSymbol* newGenset = $3;
 
         if (currentScope->getLocal(newGenset->str) != nullptr) {
@@ -631,7 +719,13 @@ genset_body:
                  << "]: Classe geral '" << baseClass->str << "' do genset ainda não declarada.\n";
         }
 
+        $$ = new GensetBody();
+
+        $$->general = baseClass->str;
+        $$->specifics = move(*$4);
+
         destroyPartialSymbol(baseClass);
+        delete $4;
     }
 ;
 
@@ -641,7 +735,28 @@ genset_body:
 internal_rel:
     opt_at_stereotype opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
         if ($3 != nullptr) {
-            string relType = ($1 != nullptr ? $1 : "relation");
+
+            RelationNode* relation = new RelationNode();
+
+            relation->stereotype = $1;
+
+            // A classe de origem é a classe que contém a relação
+           relation->sourceClass = currentClass->name;
+
+            // A classe de destino é o CLASS_NAME
+            relation->targetClass = $5->str;
+
+            // Converter as cardinalidades
+            relation->sourceCardinality = $2? $2->str : "";
+            relation->targetCardinality = $4? $4->str: "";
+
+            relation->lineStart = currentClass->lineStart;
+
+            currentClass->internalRelations.emplace_back(relation);
+
+            // Tabela de símbolos
+
+            RelationStereotype relType = $1;
 
             relationalConector* relationC = $3;
             int relationType = relationC->left;
@@ -689,13 +804,36 @@ internal_rel:
 
 external_rel:
     opt_at_stereotype RELATION CLASS_NAME opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
-        string relType = ($1 != nullptr ? $1 : "relation");
+
+        RelationStereotype relType = $1;
 
         partialSymbol* className = $3;
 
         relationalConector* relationC = $5;
         int relationType = relationC->left;
         string relName;
+
+        // Nó da AST
+        
+        RelationNode* relation = new RelationNode();
+
+        relation->stereotype = relType;
+
+        // A classe de origem é a classe que contém a relação
+        relation->sourceClass = className->str;
+
+        // A classe de destino é o CLASS_NAME
+        relation->targetClass = $7->str;
+
+        // Converter as cardinalidades
+        relation->sourceCardinality = $4->str;
+        relation->targetCardinality = $6->str;
+
+        relation->lineStart = currentClass->lineStart;
+
+        root->package->externalRelations.emplace_back(relation);
+
+        // Tabela de símbolos
 
         if (relationC->middle == nullptr){
             relName = "Relação externa sem nome";
@@ -732,13 +870,34 @@ external_rel:
     }
     |
     opt_at_stereotype RELATION RELATION_NAME opt_cardinality rel_connector opt_cardinality CLASS_NAME opt_rel_alias {
-        string relType = ($1 != nullptr ? $1 : "relation");
+        RelationStereotype relType = $1;
 
         partialSymbol* relationName = $3;
 
         relationalConector* relationC = $5;
         int relationType = relationC->left;
         string relName;
+
+        // Nó da AST
+        
+        RelationNode* relation = new RelationNode();
+
+        relation->stereotype = relType;
+
+        relation->relationName = relationName->str;
+
+        // A classe de destino é o CLASS_NAME
+        relation->targetClass = $7->str;
+
+        // Converter as cardinalidades
+        relation->sourceCardinality = $4->str;
+        relation->targetCardinality = $6->str;
+
+        relation->lineStart = currentClass->lineStart;
+
+        root->package->externalRelations.emplace_back(relation);
+
+        // Tabela de símbolos
 
         if (relationC->middle == nullptr){
             relName = "Relação externa sem nome";
@@ -806,7 +965,7 @@ opt_cardinality:
 ;
 
 opt_at_stereotype:
-    %empty { $$ = nullptr; contextoAtual = TipoErro::RELACAO; }
+    %empty { $$ = RelationStereotype::DEFAULT; contextoAtual = TipoErro::RELACAO; }
     | AT relation_type { $$ = $2; contextoAtual = TipoErro::RELACAO; }
 ;
 
@@ -817,31 +976,31 @@ relation_operator:
 ;
 
 relation_type:
-    COMPONENT_OF           { $$ = (char*)"componentOf"; }
-  | MEMBER_OF              { $$ = (char*)"memberOf"; }
-  | SUB_COLLECTION_OF      { $$ = (char*)"subCollectionOf"; }
-  | SUB_QUALITY_OF         { $$ = (char*)"subQualityOf"; }
-  | MEDIATION              { $$ = (char*)"mediation"; }
-  | MATERIAL               { $$ = (char*)"material"; }
-  | DERIVATION             { $$ = (char*)"derivation"; }
-  | COMPARATIVE            { $$ = (char*)"comparative"; }
-  | CHARACTERIZATION       { $$ = (char*)"characterization"; }
-  | EXTERNAL_DEPENDENCE    { $$ = (char*)"externalDependence"; }
-  | INSTANTIATION          { $$ = (char*)"instantiation"; }
-  | TERMINATION            { $$ = (char*)"termination"; }
-  | PARTICIPATIONAL        { $$ = (char*)"participational"; }
-  | PARTICIPATION          { $$ = (char*)"participation"; }
-  | HISTORICAL_DEPENDENCE  { $$ = (char*)"historicalDependence"; }
-  | CREATION               { $$ = (char*)"creation"; }
-  | MANIFESTATION          { $$ = (char*)"manifestation"; }
-  | BRINGS_ABOUT           { $$ = (char*)"bringsAbout"; }
-  | TRIGGERS               { $$ = (char*)"triggers"; }
-  | COMPOSITION            { $$ = (char*)"composition"; }
-  | AGGREGATION            { $$ = (char*)"aggregation"; }
-  | INHERENCE              { $$ = (char*)"inherence"; }
-  | VALUE                  { $$ = (char*)"value"; }
-  | FORMAL                 { $$ = (char*)"formal"; }
-  | CONSTITUTION           { $$ = (char*)"constitution"; }
+    COMPONENT_OF           { $$ = RelationStereotype::COMPONENT_OF; }
+  | MEMBER_OF              { $$ = RelationStereotype::MEMBER_OF; }
+  | SUB_COLLECTION_OF      { $$ = RelationStereotype::SUB_COLLECTION_OF; }
+  | SUB_QUALITY_OF         { $$ = RelationStereotype::SUB_QUALITY_OF; }
+  | MEDIATION              { $$ = RelationStereotype::MEDIATION; }
+  | MATERIAL               { $$ = RelationStereotype::MATERIAL; }
+  | DERIVATION             { $$ = RelationStereotype::DERIVATION; }
+  | COMPARATIVE            { $$ = RelationStereotype::COMPARATIVE; }
+  | CHARACTERIZATION       { $$ = RelationStereotype::CHARACTERIZATION; }
+  | EXTERNAL_DEPENDENCE    { $$ = RelationStereotype::EXTERNAL_DEPENDENCE; }
+  | INSTANTIATION          { $$ = RelationStereotype::INSTANTIATION; }
+  | TERMINATION            { $$ = RelationStereotype::TERMINATION; }
+  | PARTICIPATIONAL        { $$ = RelationStereotype::PARTICIPATIONAL; }
+  | PARTICIPATION          { $$ = RelationStereotype::PARTICIPATION; }
+  | HISTORICAL_DEPENDENCE  { $$ = RelationStereotype::HISTORICAL_DEPENDENCE; }
+  | CREATION               { $$ = RelationStereotype::CREATION; }
+  | MANIFESTATION          { $$ = RelationStereotype::MANIFESTATION; }
+  | BRINGS_ABOUT           { $$ = RelationStereotype::BRINGS_ABOUT; }
+  | TRIGGERS               { $$ = RelationStereotype::TRIGGERS; }
+  | COMPOSITION            { $$ = RelationStereotype::COMPOSITION; }
+  | AGGREGATION            { $$ = RelationStereotype::AGGREGATION; }
+  | INHERENCE              { $$ = RelationStereotype::INHERENCE; }
+  | VALUE                  { $$ = RelationStereotype::VALUE; }
+  | FORMAL                 { $$ = RelationStereotype::FORMAL; }
+  | CONSTITUTION           { $$ = RelationStereotype::CONSTITUTION; }
 ;
 
 %%
