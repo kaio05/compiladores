@@ -1,7 +1,7 @@
-import ItensDaPizzaria
-import CoberturasDePizza
+import ItensDaPizzariaPackage
+import CoberturasDePizzaPackage
 
-package Pizza
+package PizzaPackage
 
 //=============================================
 // DEFINICAO DA CLASSE PIZZA

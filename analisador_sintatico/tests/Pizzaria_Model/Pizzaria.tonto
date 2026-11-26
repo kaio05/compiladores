@@ -1,10 +1,10 @@
-import Pessoa
-import Cliente
-import Pizza
-import Empresa
-import ItensDaPizzaria
+import PessoaPackage
+import ClientePackage
+import PizzaPackage
+import EmpresaPackage
+import ItensDaPizzariaPackage
 
-package Pizzaria
+package PizzariaPackage
 
 //=============================================
 // ATENDIMENTO

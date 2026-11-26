@@ -1,6 +1,6 @@
-import Pizza
+import PizzaPackage
 
-package CoberturasDePizza
+package CoberturasDePizzaPackage
 
 //=============================================
 // OPCOES DE CARNE

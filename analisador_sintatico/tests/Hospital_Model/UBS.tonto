@@ -1,9 +1,9 @@
-import Paciente
-import FuncionarioDaUBS
-import ConsultaMedica
-import Vacinacao
+import PacientePackage
+import FuncionarioDaUBSPackage
+import ConsultaMedicaPackage
+import VacinacaoPackage
 
-package UBS
+package UBSPackage
 
 kind Unidade_Basica_De_Saude
 

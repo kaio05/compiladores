@@ -1,6 +1,6 @@
-import Pessoa
+import PessoaPackage
 
-package Paciente
+package PacientePackage
 
 role Paciente specializes Pessoa {
     tipo_Sanguineo : TipoSanguineo

@@ -1,4 +1,4 @@
-package Role_Pattern
+package Role_PatternPackage
 
 kind ClassName
 role Role_Name1 specializes ClassName

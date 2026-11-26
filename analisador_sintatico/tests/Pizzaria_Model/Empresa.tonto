@@ -1,4 +1,4 @@
-package Empresa
+package EmpresaPackage
 
 kind Empresa {
     nome : string [1]

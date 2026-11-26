@@ -1,4 +1,4 @@
-package Hospital
+package HospitalPackage
 
 kind Unidade_Basica_De_Saude
 kind Pessoa {

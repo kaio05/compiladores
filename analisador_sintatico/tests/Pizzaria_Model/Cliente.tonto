@@ -1,7 +1,7 @@
-import Pessoa
-import Empresa
+import PessoaPackage
+import EmpresaPackage
 
-package Cliente
+package ClientePackage
 
 roleMixin Cliente
 

@@ -1,4 +1,4 @@
-package RoleMixin_Pattern
+package RoleMixin_PatternPackage
 
 kind ClassName1
 kind ClassName2

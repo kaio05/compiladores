@@ -1,4 +1,4 @@
-package Relator_Pattern
+package Relator_PatternPackage
 
 kind ClassName1
 kind ClassName2

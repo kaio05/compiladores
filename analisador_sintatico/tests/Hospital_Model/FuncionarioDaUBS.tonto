@@ -1,7 +1,7 @@
-import Pessoa
-import Paciente
+import PessoaPackage
+import PacientePackage
 
-package FuncionarioDaUBS
+package FuncionarioDaUBSPackage
 
 //=============================================
 // DEFINICAO DA CLASSE FUNCIONARIO_DA_UBS

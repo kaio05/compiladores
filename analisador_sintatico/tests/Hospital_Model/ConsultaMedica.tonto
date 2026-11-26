@@ -1,7 +1,7 @@
-import Paciente
-import FuncionarioDaUBS
+import PacientePackage
+import FuncionarioDaUBSPackage
 
-package ConsultaMedica
+package ConsultaMedicaPackage
 
 //=============================================
 // RELACAO ENTRE PACIENTE E MEDICO

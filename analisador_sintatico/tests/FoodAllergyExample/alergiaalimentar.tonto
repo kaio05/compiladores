@@ -1,6 +1,6 @@
-import alergiaalimentar
+import alergiaalimentarPackage
 
-package alergiaalimentar
+package alergiaalimentarPackage
 
 kind Paciente
 

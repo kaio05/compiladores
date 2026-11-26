@@ -1,6 +1,6 @@
-import TDAH
+import TDAHPackage
 
-package TDAH
+package TDAHPackage
 
 category Hyperactivity_Symptom
 

@@ -1,4 +1,4 @@
-package Pessoa
+package PessoaPackage
 
 kind Pessoa {
     nome : string [1]

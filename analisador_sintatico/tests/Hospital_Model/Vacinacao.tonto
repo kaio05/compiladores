@@ -1,7 +1,7 @@
-import Paciente
-import FuncionarioDaUBS
+import PacientePackage
+import FuncionarioDaUBSPackage
 
-package Vacinacao
+package VacinacaoPackage
 
 
 //=============================================

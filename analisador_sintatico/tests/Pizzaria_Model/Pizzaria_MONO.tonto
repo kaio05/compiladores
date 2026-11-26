@@ -1,4 +1,4 @@
-package PizzariaMono
+package PizzariaMonoPackage
 
 kind Pessoa {
     nome : string [1]

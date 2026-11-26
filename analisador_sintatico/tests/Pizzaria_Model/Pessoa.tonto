@@ -1,6 +1,6 @@
-import Cliente
+import ClientePackage
 
-package Pessoa
+package PessoaPackage
 
 //=============================================
 // DEFINICAO DA CLASSE PESSOA
