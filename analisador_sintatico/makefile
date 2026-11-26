@@ -9,19 +9,21 @@ BISON=bison
 LEXDIR = ../analisador_lexico/
 SITDIR = ../analisador_sintatico/
 
-parser: $(LEXDIR)lex.yy.cc $(LEXDIR)Token.o $(LEXDIR)AnalisadorLexico.o parser.tab.c symtable.o relatorio.cpp
+parser: $(LEXDIR)lex.yy.cc $(LEXDIR)Token.o $(LEXDIR)AnalisadorLexico.o parser.tab.c symtable.o relatorio.cpp ast.h
 	$(CPP) $(LEXDIR)lex.yy.cc $(LEXDIR)Token.o $(LEXDIR)AnalisadorLexico.o parser.tab.c symtable.o relatorio.cpp -g -fsanitize=address -std=gnu++20 -o parser
 
-symtable.o: symtable.cpp symtable.h 
+symtable.o: symtable.cpp symtable.h ast.h
 	$(CPP) -c symtable.cpp -std=gnu++20 -o symtable.o
 
-../analisador_lexico/AnalisadorLexico.o: parser.tab.c $(LEXDIR)lex.yy.cc $(LEXDIR)Token.o $(LEXDIR)AnalisadorLexico.cpp $(LEXDIR)AnalisadorLexico.h 
+ast.h: ast.h
+
+../analisador_lexico/AnalisadorLexico.o: parser.tab.c $(LEXDIR)lex.yy.cc $(LEXDIR)Token.o $(LEXDIR)AnalisadorLexico.cpp $(LEXDIR)AnalisadorLexico.h ast.h
 	$(CPP) -c $(LEXDIR)AnalisadorLexico.cpp -std=c++20 -o $(LEXDIR)AnalisadorLexico.o
 
-../analisador_lexico/Token.o: parser.tab.c $(LEXDIR)Token.h
+../analisador_lexico/Token.o: parser.tab.c $(LEXDIR)Token.h ast.h
 	$(CPP) -c $(LEXDIR)Token.cpp -std=c++20 -o $(LEXDIR)Token.o
 
-../analisador_lexico/lex.yy.cc: $(LEXDIR)lexer.l
+../analisador_lexico/lex.yy.cc: $(LEXDIR)lexer.l ast.h
 	$(FLEX) -o $(LEXDIR)lex.yy.cc $(LEXDIR)lexer.l
 
 parser.tab.c: parser.y

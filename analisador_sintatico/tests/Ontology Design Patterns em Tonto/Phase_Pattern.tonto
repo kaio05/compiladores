@@ -1,4 +1,4 @@
-package Phase_PatternPackage
+package PhasePatternPackage
 
 kind ClassName
 phase Phase_Name1 specializes ClassName

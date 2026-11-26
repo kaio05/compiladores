@@ -1,6 +1,7 @@
 #include <string>
 #include <optional>
 #include <memory>
+#include <iostream>
 using namespace std;
 
 struct Node {
@@ -121,12 +122,24 @@ struct ClassNode : public Node {
 struct PackageNode : public Node {
     string name;
 
-    vector<unique_ptr<ClassNode>> classes;
-    vector<unique_ptr<GensetNode>> gensets;
-    vector<unique_ptr<RelationNode>> externalRelations;
+    vector<ClassNode*> classes;
+    vector<GensetNode*> gensets;
+    vector<RelationNode*> externalRelations;
 };
 
 struct ProgramNode : public Node {
     vector<PackageNode*> imports;
     PackageNode* package;
 };
+
+inline void showTree(ProgramNode* root) {
+    cout << "\nImports:\n";
+    for(PackageNode* p : root->imports) {
+        cout << p->name << '\n';
+    }
+    cout << "\nPacote:" << root->package->name << '\n';
+    cout << "\nClasses:\n";
+    for(ClassNode* c : root->package->classes) {
+        cout << c->name << '\n';
+    }
+}

@@ -132,7 +132,7 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 
 
 /* Regras que retorna um tipo de dado específico */
-%type <program> program package_units package_unit
+%type <program> program
 %type <package> package_decl
 
 %type <classNode> class_decl class_header
@@ -161,18 +161,10 @@ TipoErro contextoAtual = TipoErro::GENERICO;
 /* 1. Programa e Pacotes */
 
 program:
-    package_units { $$ = root; }
-;
-
-package_units:
-    package_unit
-    | package_units package_unit
-;
-
-package_unit:
     opt_imports package_decl declarations
     {
         root->package = $2;
+        $$ = root;
     }
 ;
 
@@ -197,14 +189,15 @@ import_stmt:
 ;
 
 import_path:
-    identifier
-    | identifier DOT identifier
+    identifier { $$ = $1; }
+    | identifier DOT identifier { $$ = $1; }
 ;
 
 identifier:
     CLASS_NAME    { $$ = $1; }
     | RELATION_NAME { $$ = $1; }
     | NEW_TYPE    { $$ = $1; }
+    | PACKAGE_NAME { $$ = $1; }
 ;
 
 /* Declaração de pacotes */
@@ -267,11 +260,9 @@ declaration:
 class_decl:
     class_header opt_class_body { 
         exitScope(); 
-        
-        currentClass = new ClassNode();
 
         root->package->classes.emplace_back($1);
-
+        currentClass = nullptr;
         $$ = $1;
     }
 ;
@@ -296,11 +287,12 @@ class_header:
             node->name = className->str;
             node->lineStart = className->line;
             node->lineEnd = className->line;
-
             node->superclasses = move(*$4);
-
             node->stereotype = $1;
 
+            currentClass = node;
+
+            delete $4;
             $$ = node;
             
             // Inserção na tabela de símbolos
@@ -829,7 +821,7 @@ external_rel:
         relation->sourceCardinality = $4->str;
         relation->targetCardinality = $6->str;
 
-        relation->lineStart = currentClass->lineStart;
+        relation->lineStart = className->line;
 
         root->package->externalRelations.emplace_back(relation);
 
@@ -893,7 +885,7 @@ external_rel:
         relation->sourceCardinality = $4->str;
         relation->targetCardinality = $6->str;
 
-        relation->lineStart = currentClass->lineStart;
+        relation->lineStart = relationName->line;
 
         root->package->externalRelations.emplace_back(relation);
 
@@ -1061,6 +1053,25 @@ int main(int argc, char ** argv)
         
         gerar_relatorio();
 
+        showTree(root);
+
+        // Libera memória da AST
+        for (ClassNode* c: root->package->classes) {
+            delete c;
+            c = nullptr;
+        }
+        for (GensetNode* g: root->package->gensets) {
+            delete g;
+            g = nullptr;
+        }
+        for (RelationNode* r: root->package->externalRelations) {
+            delete r;
+            r = nullptr;
+        }
+        for (PackageNode* p: root->imports) {
+            delete p;
+            p = nullptr;
+        }
         return parseResult;
 
     }

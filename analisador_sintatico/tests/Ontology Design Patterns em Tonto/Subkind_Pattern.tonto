@@ -1,4 +1,4 @@
-package Subkind_PatternPackage
+package SubkindPatternPackage
 
 kind ClassName
 subkind SubclassName1 specializes ClassName
